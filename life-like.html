@@ -1,0 +1,87 @@
+<style>
+  #container {
+    border-radius: 2px;
+    border: 3px solid #ccc;
+    width: 80ch;
+  }
+  #grid {
+    background-color: #000;
+    width: 100%;
+    image-rendering: pixelated;
+  }
+  #grid-state {
+    background-color: #666;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-top: 4px solid #ccc;
+    grid-gap: 4px;
+  }
+  .var-state {
+    background-color: #222;
+    display: flex;
+    padding: 4px 8px;
+    font-family: Arial, sans-serif;
+  }
+  .label {
+    font-weight: bold;
+    margin-right: 8px;
+  }
+  .var-value {
+    font-family: monospace;
+  }
+</style>
+<div id="container">
+  <canvas id="grid"></canvas>
+  <div id="grid-state">
+    <div class="var-state">
+      <div class="label">Mode</div>
+      <div class="var-value" id="kb-mode"></div>
+    </div>
+
+    <div class="var-state">
+      <div class="label">Playback</div>
+      <div class="var-value" id="playback-state"></div>
+    </div>
+
+    <div class="var-state">
+      <div class="label">Flicker Control</div>
+      <div class="var-value" id="flicker-control">false</div>
+    </div>
+    <!---------------------------------------------->
+
+
+    <!-- Grid states for adjusting probabilities  -->
+    <div class="var-state">
+      <div class="label">p_m</div>
+      <div class="var-value" id="prob-m"></div>
+    </div>
+
+    <div class="var-state">
+      <div class="label">p_x</div>
+      <div class="var-value" id="prob-x"></div>
+    </div>
+
+    <div class="var-state">
+      <div class="label">p_y</div>
+      <div class="var-value" id="prob-y"></div>
+    </div>
+    <!---------------------------------------------->
+
+
+
+    <div class="var-state">
+      <div class="label">Brush Size</div>
+      <div class="var-value" id="brush-size"></div>
+    </div>
+
+    <div class="var-state">
+      <div class="label">Brush Value</div>
+      <div class="var-value" id="brush-prob"></div>
+    </div>
+
+    <div class="var-state">
+      <div class="label">Brush</div>
+      <div class="var-value" id="mouse-mode"></div>
+    </div>
+  </div>
+</div>

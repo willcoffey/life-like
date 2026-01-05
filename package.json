@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "vimlike-keybinder": "github:willcoffey/vimlike-keybinder"
+  },
+  "devDependencies": {
+    "vite": "^7.3.0"
+  }
+}
