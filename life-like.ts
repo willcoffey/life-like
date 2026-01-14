@@ -644,8 +644,8 @@ class LifeLikeElement extends HTMLElement {
 
     /** Keybindings for mode switching */
     /** @TODO change to system handlers */
-    vlk.bindKeys("<Escape>", "set-mode", "brush", "normal");
-    vlk.bindKeys("<b>", "set-mode", "normal", "brush");
+    vlk.bind("<Escape>", "set-mode:normal", "Exit brush mode back to normal mode");
+    vlk.bind("<b>", "set-mode:brush", "Enter brush mode, for changing the parameters of the brush");
 
     /** Controls for changing the m/x/y variables that modify final probabilities */
     vlk.bindKeys("<+>", "increase-prob-m", "normal");
