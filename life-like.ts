@@ -2,36 +2,6 @@ import html from "./life-like.html?raw";
 import { KeyBinder } from "vimlike-keybinder";
 import { NAMED_RULES } from "./lib/rules.ts";
 const CELL_SIZE = 1;
-/**
- * [FINAL REVIEW] @TODO - Color gradient cells
- * @TODO - Integrate keybinder
- * @TODO - presets
- * @TODO - Custom rules
- * @TODO - Save rules
- * @TODO - ELO for shared rules (show 2 random rules, pick best)
- * @TODO - Controls for
- *  - Rule input
- *  - amp
- *  - play/pause
- *  - insert structure
- *  - mouse over observe
- */
-
-/**
- * Quick hack class, receives input as events and calls the stdin function on
- * component.
- * @TODO - Add events to a buffer and process in sequence in case component cannot
- * handle event volume
- */
-class EventBuffer {
-  component: { stdin: Function };
-  constructor(component: { stdin: Function }) {
-    this.component = component;
-  }
-
-  dispatchEvent(event: any) {
-  }
-}
 interface Command {
   command: string;
   [key: string]: any;
@@ -51,7 +21,6 @@ export interface Grid {
   mouseMode: "observe" | "randomize" | "kill" | "set";
   brushSize: number;
   brushProb: number;
-  frame_time: number[];
   // An array of life-like rules specified in golly format.
   // [See wiki](https://en.wikipedia.org/wiki/Life-like_cellular_automaton)
   // Conway's game of life = B3/S23 = birth at 3 neighbors, survive 2 or 3, else die
@@ -66,9 +35,8 @@ export interface Grid {
   mousePosition: [number, number];
   position: number;
   cells: Float64Array;
-  // Controls how the probilities are modified after being computed
-  amp: number;
 
+  // Controls how the probilities are modified after being computed
   pM: number;
   pX: number;
   pY: number;
@@ -88,7 +56,6 @@ export class LifeLike {
     this.makeSymmetric();
     return;
   }
-
   resetRandom() {
     this.grid = LifeLike.createGrid(WIDTH, HEIGHT);
     this.makeSymmetric();
@@ -98,7 +65,6 @@ export class LifeLike {
     this.grid.pX = Math.random();
     addCircle(this.grid);
   }
-
   /**
    * Process any input that can effect the internal state of the component.
    * All mouse / key events etc must interact via this function
@@ -236,18 +202,16 @@ export class LifeLike {
     }
 
     const time = Date.now() - now;
-    this.grid.frame_time.push(time);
-    if (this.grid.frame_time.length > 10) this.grid.frame_time.shift();
     setTimeout(() => this.play(), 50);
     return false;
   }
 
+  /** Mirrors the top left quadrant to the other 3 quadrants */
   makeSymmetric() {
     const newCells = new Float64Array(new ArrayBuffer(8 * this.grid.width * this.grid.height));
     for (let position = 0; position < this.grid.cells.length; position++) {
       const x = position % this.grid.width;
       const y = (position - x) / this.grid.width;
-
       //** This is top left quadrant, which gets mirrored to other quadrants */
       if (x < this.grid.width / 2 && y < this.grid.height / 2) {
         const xOffset = this.grid.width - (2 * x) - 1;
@@ -257,34 +221,23 @@ export class LifeLike {
         newCells[position + xOffset] = this.grid.cells[position];
         newCells[position + xOffset + yOffset * this.grid.width] = this.grid.cells[position];
         newCells[position + yOffset * this.grid.width] = this.grid.cells[position];
-
-        //newCells[position + xOffset * yOffset * this.grid.width] = this.grid.cells[position]; // Top right
       }
     }
-
     this.grid.cells = newCells;
   }
 
+  /**
+   * Calculate the next state of the grid
+   */
   tick() {
     this.grid.cells = LifeLike.getNextState(this.grid);
-
-    /** @TODO Refactor - mouse add random noise */
-    /*
-    if (this.grid.mouseIsDown) {
-      const [x, y] = this.grid.mousePosition;
-      for (let i = x - 20; i < x + 20; i++) {
-        if (x < 0 || x > this.grid.width) continue;
-        for (let j = y - 20; j < y + 20; j++) {
-          if (y < 0 || y > this.grid.width) continue;
-          //this.grid.cells[i + j * this.grid.width] = Math.random() > .7 ? 1 : 0;
-          this.grid.cells[i + j * this.grid.width] = Math.random();
-        }
-      }
-    }
-    */
   }
 
-  /* @TODO get neighborhood, runs extremely slow */
+  /**
+   * Get's the neighborhood for the cell at specified position. If the position is on the edge of
+   * the grid, it's neighbor is the opposite edge.
+   * @TODO: optimize
+   */
   static getNeighborhood(position: number, grid: Grid): number[] {
     const x = position % grid.width;
     const y = (position - x) / grid.width;
@@ -333,6 +286,9 @@ export class LifeLike {
     return n;
   }
 
+  /**
+   * Compute the next state of the grid
+   */
   static getNextState(grid: Grid): Float64Array {
     const { pX, pY, pM } = grid;
     /** Create a new 1D array of 8 bit floats that represent grid state */
@@ -341,79 +297,37 @@ export class LifeLike {
      * Iterate over each cell, skipping the edges since they don't have all their neighbors
      */
     for (let position = 0; position < grid.cells.length; position++) {
-      /** Skip the edges since they don't have 8 neighbors */
-      /*
-      if (
-        position % grid.width === 0 || // Position is left side of grid
-        (position + 1) % grid.width == 0 || // Position is right most side of grid
-        position < grid.width - 1 || // Position is top side of grid
-        position > grid.width * (grid.height - 1) // Position is bottom of grid
-      ) continue;
-      const neighbors = [
-        grid.cells[position - grid.width - 1],     // y - 1, x - 1
-        grid.cells[position - grid.width],         // y - 1
-        grid.cells[position - grid.width + 1],     // y - 1, x + 1
-        grid.cells[position - 1],                  // x - 1
-        grid.cells[position + 1],                  // x + 1
-        grid.cells[position + grid.width - 1],     // y + 1, x - 1
-        grid.cells[position + grid.width],         // y + 1
-        grid.cells[position + grid.width + 1],     // y + 1, x + 1
-      ];
-     */
       const neighbors = LifeLike.getNeighborhood(position, grid);
 
       // Compute the odd of # of alive neighbors by computing odds of each possible neighbor state,
       // and summing them
-      const odds = LifeLike.computeNeighborTotalOdds(LifeLike.computeNeighborStateOdds(neighbors));
+      const odds = LifeLike.computeNeighborTotalOdds(
+        LifeLike.computeNeighborStateOdds(neighbors),
+      );
 
       // Apply the rules to the current state
       let state = NAMED_RULES.conway(grid, position, odds);
-
       //let state = NAMED_RULES.dayNight(grid, position, odds);
       //let state = NAMED_RULES.diomoeba(grid, position, odds);
       //let state = NAMED_RULES.anneal(grid, position, odds);
-
-      // Amplify odds such that low prob events become lower, high prob events become higher
-      // @TODO Find a way to not need this ugliness
-      //const amp = 1.6;
-      /*
-      if (state <= 0.4) {
-        state = state / grid.pM;
-        //state = Math.pow(state, grid.pM);
-      } else {
-        //state = 1 - Math.pow(1 - state, grid.pM);
-        state = 1 - ((1 - state) / grid.pM);
-      }
-     */
-
-      /*
-      state = Number(state.toFixed(8));
-      state = state + (1 - state) / grid.amp;
-     */
-
+      
+      
       //state = LifeLike.sigmoid(state, grid.amp).toFixed(8);
       //state = LifeLike.powerTransform(state, grid.amp).toFixed(8);
       //state = LifeLike.addition(state, grid.amp);
       //state = LifeLike.multiplication(state, grid.amp);
-      //
-
       if (state >= 1) state = 1;
       else if (state <= 0) state = 0;
       else if (state < pX) {
         state = (state / pM) + pY;
-        //state = grid.pY - (grid.pM * (grid.pX - state));
-        //state = Math.pow(state, grid.pM);
       } else {
         state = 1 - ((1 - state) / pM) + pY;
-        //state = (state * pM) + pY;
-        //state = grid.pY + (grid.pM * (state - grid.pX));
-        //state = 1 - Math.pow(1 - state, grid.pM);
       }
-
       if (state >= 1) state = 1;
       else if (state <= 0) state = 0;
 
-      nextState[position] = Number(state.toFixed(10));
+      //nextState[position] = state
+      nextState[position] = Math.round(state * 1000) / 1000;
     }
 
     /** Apply any user interactions after grid has been computed to avoid partial updates */
@@ -455,7 +369,9 @@ export class LifeLike {
   }
   /**
    * Iterates over all possible states that neighbors could be in and calculates the chance of each
-   * one being true
+   * one being true.
+   * e.g.
+   * prob(00110101) = p(neighor 0 dead) * p(neighbor 1 dead) * prob(neighor 2 alive)...
    */
   static computeNeighborStateOdds(neighbors: number[]): number[] {
     /** Odds for each state if the neighbors */
@@ -478,9 +394,8 @@ export class LifeLike {
         } else {
           prob = prob * (1 - neighbor);
         }
-
         /** No need to continue computing odds if state is impossible */
-        //if (prob === 0) break;
+        if (prob === 0) break;
       }
       odds.push(prob);
     }
@@ -492,10 +407,8 @@ export class LifeLike {
     const grid: Grid = {
       mouseMode: "randomize",
       brushProb: .5,
-      frame_time: [],
       rules: [],
       brushSize: 10,
-      amp: 0,
       pM: 1.6,
       pX: .42,
       pY: 0.04,
@@ -613,7 +526,6 @@ class LifeLikeElement extends HTMLElement {
     this.shadow!.getElementById("brush-prob")!.innerHTML = grid.brushProb.toFixed(4);
     this.shadow!.getElementById("kb-mode")!.innerHTML = this.vlk.state.mode;
     this.shadow!.getElementById("flicker-control")!.innerHTML = `${this.blinkControl}`;
-    const framerate = grid.frame_time.reduce((a, b) => a + b, 0) / grid.frame_time.length;
 
     /** y=mx+b for slope probability control */
     this.shadow!.getElementById("prob-m")!.innerHTML = grid.pM.toFixed(2);
@@ -634,9 +546,7 @@ class LifeLikeElement extends HTMLElement {
   }
 
   setupKeyBindings() {
-    const eventBuffer = new EventBuffer(this.component);
     const vlk = this.vlk;
-    //kb.setTarget(eventBuffer);
     window.addEventListener("keydown", (e) => {
       const res = vlk.handleKeyEvent(e);
       //if (res) e.preventDefault();
