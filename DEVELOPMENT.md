@@ -1,4 +1,7 @@
-# Misc Tasks
-- Have neighbors on the edge of the grid transition to opposite side instead of being static
-- Make rules be computed via shaders
-- 
+# Tasks
+
+## Update bindings
+Use new keybinder API to update the keybindings with help descriptions
+
+## Add methods for export
+Methods for exporting canvas as image, and maybe gif
