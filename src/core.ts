@@ -9,6 +9,16 @@ import { NAMED_RULES } from "./lib/rules.ts";
  * Main datastructure for component, anything that can effect the next state calculation of the grid
  * should be in this object.
  */
+const mouseModes: ("observe" | "randomize" | "kill" | "set")[] = [
+  "observe",
+  "randomize",
+  "kill",
+  "set",
+];
+interface Command {
+  command: string;
+  [key: string]: any;
+}
 export interface Grid {
   mouseMode: "observe" | "randomize" | "kill" | "set";
   brushSize: number;
@@ -142,7 +152,7 @@ export class LifeLike {
   }
 
   resetRandom() {
-    this.grid = LifeLike.createGrid(WIDTH, HEIGHT);
+    this.grid = LifeLike.createGrid(this.grid.width, this.grid.width);
     this.makeSymmetric();
     this.grid.playing = true;
     this.grid.pY = Math.random() - .5;

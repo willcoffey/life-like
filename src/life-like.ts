@@ -2,16 +2,6 @@ import html from "./life-like.html?raw";
 import { KeyBinder } from "vimlike-keybinder";
 import { LifeLike, Grid } from "./core.ts";
 const CELL_SIZE = 1;
-interface Command {
-  command: string;
-  [key: string]: any;
-}
-const mouseModes: ("observe" | "randomize" | "kill" | "set")[] = [
-  "observe",
-  "randomize",
-  "kill",
-  "set",
-];
 /**
  * Web component. Interprets all user input and sends it to core app. Renders output of core app
  * to a canvas element.
@@ -22,8 +12,9 @@ class LifeLikeElement extends HTMLElement {
   container: HTMLElement | null = null;
   context: CanvasRenderingContext2D | undefined;
   vlk: KeyBinder;
-  blinkControl: boolean = false;
 
+
+  blinkControl: boolean = false;
   constructor() {
     super();
     this.component = new LifeLike(100, 100);

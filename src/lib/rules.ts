@@ -1,4 +1,4 @@
-import type { Grid } from "../life-like";
+import type { Grid } from "../core";
 interface Rule {
   // How much to adjust high / low probs
   amp: number;
