@@ -5,6 +5,7 @@
     "strict": true,
     "moduleResolution": "nodenext",
     "module": "nodenext",
+    "types": ["vite/client"],
     "allowImportingTsExtensions": true
   }
 }
