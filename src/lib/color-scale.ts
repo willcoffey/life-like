@@ -13,18 +13,18 @@ const HTML = `
   padding: 2px;
   border: 2px solid #000;
   box-sizing: border-box;
+  background-color: #FFF;
 }
 #color-scale {
   font-family: sans-serif;
   width: 100%;
   border: 1px solid #000;
   box-sizing: border-box;
+  border-radius: 4px;
 }
 .scale-num {
-  padding: 4px;
-  font-size: 1.2rem;
+  padding: 0 2px 0 2px;
   text-align: center;
-  background-color: #CCC;
 }
 </style>
 <div id="scale">

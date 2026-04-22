@@ -1,7 +1,8 @@
 import html from "./life-like.html?raw";
-import  "./lib/color-scale.ts"
+import "./lib/color-scale.ts";
+import "./lib/state-display.ts";
 import { KeyBinder } from "vimlike-keybinder";
-import { LifeLike, Grid } from "./core.ts";
+import { Grid, LifeLike } from "./core.ts";
 const CELL_SIZE = 1;
 /**
  * Web component. Interprets all user input and sends it to core app. Renders output of core app
@@ -11,9 +12,9 @@ class LifeLikeElement extends HTMLElement {
   shadow?: ShadowRoot;
   component: LifeLike;
   container: HTMLElement | null = null;
+  stateDisplay: null | StateDisplay = null;
   context: CanvasRenderingContext2D | undefined;
   vlk: KeyBinder;
-
 
   blinkControl: boolean = false;
   constructor() {
@@ -31,6 +32,7 @@ class LifeLikeElement extends HTMLElement {
     this.shadow = this.attachShadow({ mode: "open" });
     this.shadow.innerHTML = html;
     this.container = this.shadow.getElementById("container");
+    this.stateDisplay = this.shadow.getElementById("state-display");
 
     /** Get the canvas context and set it's width */
     /** @TODO scale to size of canvas */
@@ -59,7 +61,7 @@ class LifeLikeElement extends HTMLElement {
       this.render(this.component.grid, this.context!);
       setTimeout(() => {
         window.requestAnimationFrame(fn);
-      }, 0);
+      }, 50);
     };
     fn();
 
@@ -97,13 +99,14 @@ class LifeLikeElement extends HTMLElement {
     context.fill();
     context.stroke();
 
+    this.stateDisplay?.render(grid);
+
     /**
      * Render the rest of the non-cell state as a subcomponent
      */
-    
-    
 
     /** Update the state of vars */
+    /*
     this.shadow!.getElementById("mouse-mode")!.innerHTML = "Random";
     this.shadow!.getElementById("playback-state")!.innerHTML = grid.playing ? "Playing" : "Paused";
     this.shadow!.getElementById("brush-size")!.innerHTML = grid.brushSize.toString();
@@ -112,10 +115,11 @@ class LifeLikeElement extends HTMLElement {
     this.shadow!.getElementById("kb-mode")!.innerHTML = this.vlk.state.mode;
     this.shadow!.getElementById("flicker-control")!.innerHTML = `${this.blinkControl}`;
 
-    /** y=mx+b for slope probability control */
     this.shadow!.getElementById("prob-m")!.innerHTML = grid.pM.toFixed(2);
     this.shadow!.getElementById("prob-x")!.innerHTML = grid.pX.toFixed(2);
     this.shadow!.getElementById("prob-y")!.innerHTML = grid.pY.toFixed(2);
+    */
+    /** y=mx+b for slope probability control */
   }
 
   async handleCommands() {
@@ -138,9 +142,10 @@ class LifeLikeElement extends HTMLElement {
     });
 
     /** Keybindings for mode switching */
-    /** @TODO change to system handlers */
+    /** @TODO change to system handlers
     vlk.bind("<Escape>", "set-mode:normal", "Exit brush mode back to normal mode");
     vlk.bind("<b>", "set-mode:brush", "Enter brush mode, for changing the parameters of the brush");
+    */
 
     /** Controls for changing the m/x/y variables that modify final probabilities */
     vlk.bindKeys("<+>", "increase-prob-m", "normal");
@@ -233,14 +238,12 @@ class LifeLikeElement extends HTMLElement {
 }
 customElements.define("life-like", LifeLikeElement);
 
-
 // Int to hex, for hex color codes
 function i2h(num: number, length = 2) {
   let hex = num.toString(16);
   while (hex.length < length) hex = "0" + hex;
   return hex;
 }
-
 
 /**
  * I don't know how to do a proper color gradient, or much about human perception fo color so I just
@@ -317,45 +320,32 @@ function getColorGradient(num: number, max: number) {
 }
 
 export function getColorGradientArr(num: number, max: number): number[] {
-  if (num / max < .001) return [20, 20, 20, 255];
-  const adjusted = (num / max) * 4;
+  const VIRIDIS = [
+    [0, 0, 4],
+    [31, 12, 72],
+    [85, 15, 109],
+    [136, 34, 106],
+    [186, 54, 85],
+    [227, 89, 51],
+    [249, 140, 10],
+    [249, 201, 50],
+    [253, 231, 150],
+    [254, 245, 210],
+    [255, 255, 255],
+  ];
+  const t = num / max;
+  if (!(t >= 0.001)) return [20, 20, 20, 255]; // catches NaN, <0.001, bad inputs
 
-  const r = Math.round(red(adjusted) * 255);
-  const g = Math.round(green(adjusted) * 255);
-  const b = Math.round(blue(adjusted) * 255);
-  //return [r, g, b, 255];
-  return [r, g, b, 255];
-  function blue(n: number): number {
-    // 0 < n < 1
-    if (n <= 1) return n;
-    // 1 < n <= 2
-    if (n <= 2) return 1 - (n - 1);
-    // 2 < n <= 3
-    if (n <= 3) return 0;
-    // 3 < n <= 4
-    if (n > 3) return (n - 3);
-    return 0;
-  }
-  function green(n: number): number {
-    // 0 < n < 1
-    if (n <= 1) return 0;
-    // 1 < n <= 2
-    if (n <= 2) return n - 1;
-    // 2 < n <= 3
-    if (n <= 3) return 1 - (n - 2);
-    // 3 < n <= 4
-    if (n > 3) return (n - 3);
-    return 0;
-  }
-  function red(n: number): number {
-    // 0 < n < 1
-    if (n <= 1) return 0;
-    // 1 < n <= 2
-    if (n <= 2) return 0;
-    // 2 < n <= 3
-    if (n <= 3) return n - 2;
-    // 3 < n <= 4
-    if (n > 3) return 1;
-    return 0;
-  }
+  const s = Math.min(t, 1) * (VIRIDIS.length - 1);
+  const i = Math.min(Math.floor(s), VIRIDIS.length - 2);
+  const f = s - i;
+  const [r0, g0, b0] = VIRIDIS[i];
+  const [r1, g1, b1] = VIRIDIS[i + 1];
+
+  return [
+    Math.round(r0 + (r1 - r0) * f),
+    Math.round(g0 + (g1 - g0) * f),
+    Math.round(b0 + (b1 - b0) * f),
+    255,
+  ];
 }

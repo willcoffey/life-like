@@ -4,21 +4,37 @@ import { Grid } from "../core";
  */
 const HTML = `
 <style>
-  #grid-state {
-    background-color: #222;
+  #state-display {
+    font-family: monospace;
+    background-color: #000;
+    border: 2px solid #222;
+    border-radius: 3px;
     display: grid;
+    grid-gap: 2px;
     grid-template-columns: 1fr 1fr 1fr;
-    border-top: 4px solid #ccc;
-    grid-gap: 4px;
+    box-sizing: border-box;
+    overflow: hiddden;
+  }
+  #state-display > div {
+    overflow: hiddden;
+    background-color: #EEE;
+    padding: 10px;
+    min-width: 0;
   }
 </style>
 <div id="state-display">
+  <div id="mouseMode"></div>
+  <div id="playing"></div>
+  <div id="brushProb"></div>
+  <div id="pM"></div>
+  <div id="pX"></div>
+  <div id="pY"></div>
 </div>
 `;
 
-class StateDisplay extends HTMLElement {
+export class StateDisplay extends HTMLElement {
   shadow?: ShadowRoot;
-  lastState?: Grid;
+  lastState?: string;
   constructor() {
     super();
   }
@@ -33,7 +49,24 @@ class StateDisplay extends HTMLElement {
   }
 
   render(grid: Grid) {
-    console.log(grid);
+    /** Check against old state and return early if nothing has changed */
+    const newGrid = { ...grid };
+    delete newGrid.cells;
+    const newString = JSON.stringify(newGrid);
+    if (newString === this.lastState) return;
+    const keys = [
+      "mouseMode",
+      "playing",
+      "brushProb",
+      "pM",
+      "pX",
+      "pY",
+    ];
+    this.lastState = newString;
+    for (const key of keys) {
+      const el = this.shadow.getElementById(key);
+      if(el) el.innerHTML = `${key}: ${newGrid[key]}`
+    }
   }
 }
 customElements.define("state-display", StateDisplay);

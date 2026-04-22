@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "dev": "vite --port 3000"
+    "host": "vite --host --port 3000",
+    "dev": "nodemon --watch ./src --ext '*' --exec 'npm run host'"
   },
   "dependencies": {
     "vimlike-keybinder": "github:willcoffey/vimlike-keybinder"

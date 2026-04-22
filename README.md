@@ -1,3 +1,7 @@
+Good pattern
+.79, .31, .05
+1.88, .39, .05
+
 # Probabilistic version of Conways game of Life, and thoughts of other ideas of algo
 
 
