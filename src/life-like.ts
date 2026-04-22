@@ -1,4 +1,5 @@
 import html from "./life-like.html?raw";
+import  "./lib/color-scale.ts"
 import { KeyBinder } from "vimlike-keybinder";
 import { LifeLike, Grid } from "./core.ts";
 const CELL_SIZE = 1;
@@ -95,6 +96,12 @@ class LifeLikeElement extends HTMLElement {
     context.fillStyle = "rgba(50, 50, 50, 0.4)";
     context.fill();
     context.stroke();
+
+    /**
+     * Render the rest of the non-cell state as a subcomponent
+     */
+    
+    
 
     /** Update the state of vars */
     this.shadow!.getElementById("mouse-mode")!.innerHTML = "Random";
@@ -309,7 +316,7 @@ function getColorGradient(num: number, max: number) {
   }
 }
 
-function getColorGradientArr(num: number, max: number): number[] {
+export function getColorGradientArr(num: number, max: number): number[] {
   if (num / max < .001) return [20, 20, 20, 255];
   const adjusted = (num / max) * 4;
 
