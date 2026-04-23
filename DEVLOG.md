@@ -1,3 +1,16 @@
+# Thu Apr 23 11:56:27 AM EDT 2026
+Added a bunch of themes for colors based on human color perception. Unlike my handrolled method
+these themes don't cover the entire color space, so I can't import arbitrary images and expect
+them to work. Will address that later.
+
+Next task is getting a deno terminal utility to be able to generate images, and tests for
+performance of it.
+
+---
+
+stubbed out a terminal utility with ability to save pngs. Need to polish it with options and
+add grid settings via png metadata
+
 # Wed Apr 22 11:18:41 AM EDT 2026
 Continued getting stuff moved into custom components. Appears ok in browser, now just need to 
 decide on what final features I want and write a post.

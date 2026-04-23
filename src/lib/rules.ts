@@ -1,4 +1,4 @@
-import type { Grid } from "../core";
+import type { Grid } from "../core.ts";
 interface Rule {
   // How much to adjust high / low probs
   amp: number;

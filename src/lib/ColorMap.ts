@@ -1,4 +1,4 @@
-import palettes from "./palette.json";
+import palettes from "./palette.json" with { type: "json" };
 export type RGB = [number, number, number];
 export type PaletteData = typeof palettes;
 export type PaletteName = keyof PaletteData;

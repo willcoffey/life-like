@@ -46,8 +46,8 @@ export interface Grid {
 
 export class LifeLike {
   grid: Grid;
-  constructor(width: number = 100, height: number = 100) {
-    this.grid = LifeLike.createGrid(width, height);
+  constructor(grid?: Partial<Grid>) {
+    this.grid = LifeLike.createGrid(grid);
     LifeLike.addCircle(this.grid);
     this.makeSymmetric();
     return;
@@ -152,21 +152,16 @@ export class LifeLike {
   }
 
   resetRandom() {
-    this.grid = LifeLike.createGrid(this.grid.width, this.grid.width);
+    this.grid = LifeLike.createGrid({ width: this.grid.width, height: this.grid.height });
     this.makeSymmetric();
     this.grid.playing = true;
-    /*
-    this.grid.pY = Math.random() - .5;
-    this.grid.pM = Math.random() * 3;
-    this.grid.pX = Math.random();
-    */
 
     this.grid.pX = 0.3 + Math.random() * 0.4; // [0.3, 0.7]
     this.grid.pY = (Math.random() - 0.5) * 0.02; // [-0.01, 0.01] — drift accumulates k=4 times per tick
 
-    this.grid.pM =  Math.random() * 10; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
-    this.grid.pX =  Math.random() * 2; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
-    this.grid.pY =  Math.random() - .5 ; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
+    this.grid.pM = Math.random() * 10; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
+    this.grid.pX = Math.random() * 2; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
+    this.grid.pY = Math.random() - .5; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
 
     LifeLike.addCircle(this.grid);
   }
@@ -341,7 +336,7 @@ export class LifeLike {
       // alive — a cell at 1 is "dead" to influence; a cell at 0.92 still responds.
       const a = 0.12;
       for (let i = 0; i < 4; i++) {
-        state = state + pM * (state - a) * (1 - a - state) * (state - pX) + pY/10;
+        state = state + pM * (state - a) * (1 - a - state) * (state - pX) + pY / 10;
         if (state >= 1) state = 1;
         else if (state <= 0) state = 0;
       }
@@ -446,7 +441,10 @@ export class LifeLike {
     return res;
   }
 
-  static createGrid(width: number, height: number): Grid {
+  static createGrid(initial: Partial<Grid> = { width: 100, height: 100 }): Grid {
+    console.log(initial)
+    const width = initial.width ?? 100;
+    const height = initial.height ?? 100;
     const grid: Grid = {
       mouseMode: "randomize",
       brushProb: .5,
@@ -464,6 +462,7 @@ export class LifeLike {
       cells: new Float64Array(new ArrayBuffer(8 * width * height)),
       playing: false,
     };
+    Object.assign(grid, initial)
     return grid;
   }
 
