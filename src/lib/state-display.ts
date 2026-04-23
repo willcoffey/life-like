@@ -1,4 +1,5 @@
 import { Grid } from "../core";
+type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 /**
  * Visual bar to represent the values 0 - 1 in the automatas color scale
  */
@@ -50,21 +51,15 @@ export class StateDisplay extends HTMLElement {
 
   render(grid: Grid) {
     /** Check against old state and return early if nothing has changed */
-    const newGrid = { ...grid };
+    const newGrid: PartialBy<Grid, "cells"> = { ...grid };
     delete newGrid.cells;
     const newString = JSON.stringify(newGrid);
     if (newString === this.lastState) return;
-    const keys = [
-      "mouseMode",
-      "playing",
-      "brushProb",
-      "pM",
-      "pX",
-      "pY",
-    ];
+    const keys: (keyof Grid)[] = ["mouseMode", "playing", "brushProb", "pM", "pX", "pY"];
     this.lastState = newString;
     for (const key of keys) {
-      const el = this.shadow.getElementById(key);
+      const el = this.shadow?.getElementById(key);
+      if (!el) continue;
       const value = newGrid[key];
       if (typeof value === "number") {
         if (el) el.innerHTML = `${key}: ${value.toFixed(2)}`;

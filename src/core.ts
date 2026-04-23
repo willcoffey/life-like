@@ -155,9 +155,19 @@ export class LifeLike {
     this.grid = LifeLike.createGrid(this.grid.width, this.grid.width);
     this.makeSymmetric();
     this.grid.playing = true;
+    /*
     this.grid.pY = Math.random() - .5;
     this.grid.pM = Math.random() * 3;
     this.grid.pX = Math.random();
+    */
+
+    this.grid.pX = 0.3 + Math.random() * 0.4; // [0.3, 0.7]
+    this.grid.pY = (Math.random() - 0.5) * 0.02; // [-0.01, 0.01] — drift accumulates k=4 times per tick
+
+    this.grid.pM =  Math.random() * 10; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
+    this.grid.pX =  Math.random() * 2; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
+    this.grid.pY =  Math.random() - .5 ; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
+
     LifeLike.addCircle(this.grid);
   }
 
@@ -308,10 +318,11 @@ export class LifeLike {
       //let state = NAMED_RULES.diomoeba(grid, position, odds);
       //let state = NAMED_RULES.anneal(grid, position, odds);
 
-      //state = LifeLike.sigmoid(state, grid.amp).toFixed(8);
+      //state = LifeLike.sigmoid(state, grid.pX);
       //state = LifeLike.powerTransform(state, grid.amp).toFixed(8);
       //state = LifeLike.addition(state, grid.amp);
       //state = LifeLike.multiplication(state, grid.amp);
+      /*
       if (state >= 1) state = 1;
       else if (state <= 0) state = 0;
       else if (state < pX) {
@@ -321,8 +332,21 @@ export class LifeLike {
       }
       if (state >= 1) state = 1;
       else if (state <= 0) state = 0;
+     */
 
-      nextState[position] = state
+      // Drop-in for src/core.ts:314-322
+      // 3-root bistable cubic: fixed points at `a`, pX, `1-a` (stable, unstable, stable).
+      // Matches the original piecewise map's behavior where cells settled near ~0.1 /
+      // ~0.9 rather than snapping to 0 / 1. That soft margin keeps neighbor dynamics
+      // alive — a cell at 1 is "dead" to influence; a cell at 0.92 still responds.
+      const a = 0.12;
+      for (let i = 0; i < 4; i++) {
+        state = state + pM * (state - a) * (1 - a - state) * (state - pX) + pY/10;
+        if (state >= 1) state = 1;
+        else if (state <= 0) state = 0;
+      }
+
+      nextState[position] = state;
       //nextState[position] = Math.round(state * 1000) / 1000;
     }
 

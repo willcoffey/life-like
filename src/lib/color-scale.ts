@@ -1,8 +1,7 @@
-import { getColorGradientArr } from "../life-like";
+import { ColorMap } from "./ColorMap";
 /**
  * Visual bar to represent the values 0 - 1 in the automatas color scale
  */
-
 const HTML = `
 <style>
 #scale {
@@ -32,7 +31,7 @@ const HTML = `
   <canvas id="color-scale"></canvas>
   <div class = "scale-num">1</div>
 </div>
-`
+`;
 
 class ColorScale extends HTMLElement {
   shadow?: ShadowRoot;
@@ -75,8 +74,8 @@ class ColorScale extends HTMLElement {
     const imageData = new ImageData(imgDataArray, width, 1);
 
     for (let i = 0; i <= width; i++) {
-      const value = (255 * i) / width;
-      const [r, g, b, a] = getColorGradientArr(value, 255);
+      const value = i / width;
+      const [r, g, b, a] = ColorMap.getRGBA(value);
       imgDataArray[i * 4] = r;
       imgDataArray[i * 4 + 1] = g;
       imgDataArray[i * 4 + 2] = b;

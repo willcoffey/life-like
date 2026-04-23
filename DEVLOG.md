@@ -18,6 +18,7 @@ in no particular order
 ## Rough task list
  - refactor core to use a stack of pending operations, get rid of mouse state
  - create terminal utility for generating images
+ - idea : x/y coord determines what prob modifier to follow
 
 
 

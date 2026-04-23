@@ -1,8 +1,10 @@
 import html from "./life-like.html?raw";
 import "./lib/color-scale.ts";
-import "./lib/state-display.ts";
+import { StateDisplay } from "./lib/state-display.ts";
 import { KeyBinder } from "vimlike-keybinder";
 import { Grid, LifeLike } from "./core.ts";
+import { ColorMap } from "./lib/ColorMap.ts";
+
 const CELL_SIZE = 1;
 /**
  * Web component. Interprets all user input and sends it to core app. Renders output of core app
@@ -19,7 +21,7 @@ class LifeLikeElement extends HTMLElement {
   blinkControl: boolean = false;
   constructor() {
     super();
-    this.component = new LifeLike(400, 400);
+    this.component = new LifeLike(200, 200);
     this.vlk = new KeyBinder();
     this.handleCommands();
   }
@@ -32,7 +34,7 @@ class LifeLikeElement extends HTMLElement {
     this.shadow = this.attachShadow({ mode: "open" });
     this.shadow.innerHTML = html;
     this.container = this.shadow.getElementById("container");
-    this.stateDisplay = this.shadow.getElementById("state-display");
+    this.stateDisplay = this.getTypedEl("state-display", StateDisplay);
 
     /** Get the canvas context and set it's width */
     /** @TODO scale to size of canvas */
@@ -70,12 +72,26 @@ class LifeLikeElement extends HTMLElement {
     this.component.play();
   }
 
+  /**
+   * gets the element by id, checks it against provided constructor to confirm
+   * type of element
+   */
+  getTypedEl<T extends HTMLElement>(
+    id: string,
+    ctor: new () => T,
+  ): T {
+    const el = this.shadow?.getElementById(id);
+    if (!(el instanceof ctor)) throw `#${id} missing or not ${ctor.name}`;
+    return el;
+  }
+
+
   render(grid: Grid, context: CanvasRenderingContext2D) {
     const imgDataArray = new Uint8ClampedArray(grid.width * grid.height * 4);
     const imageData = new ImageData(imgDataArray, grid.width, grid.height);
 
     for (let position = 0; position < grid.width * grid.height; position++) {
-      const [r, g, b, a] = getColorGradientArr(grid.cells[position] * 255, 255);
+      const [r, g, b, a] = ColorMap.getRGBA(grid.cells[position]);
       imgDataArray[position * 4] = r;
       imgDataArray[position * 4 + 1] = g;
       imgDataArray[position * 4 + 2] = b;
@@ -317,35 +333,4 @@ function getColorGradient(num: number, max: number) {
     if (n > 3) return 1;
     return 0;
   }
-}
-
-export function getColorGradientArr(num: number, max: number): number[] {
-  const VIRIDIS = [
-    [0, 0, 4],
-    [31, 12, 72],
-    [85, 15, 109],
-    [136, 34, 106],
-    [186, 54, 85],
-    [227, 89, 51],
-    [249, 140, 10],
-    [249, 201, 50],
-    [253, 231, 150],
-    [254, 245, 210],
-    [255, 255, 255],
-  ];
-  const t = num / max;
-  if (!(t >= 0.001)) return [20, 20, 20, 255]; // catches NaN, <0.001, bad inputs
-
-  const s = Math.min(t, 1) * (VIRIDIS.length - 1);
-  const i = Math.min(Math.floor(s), VIRIDIS.length - 2);
-  const f = s - i;
-  const [r0, g0, b0] = VIRIDIS[i];
-  const [r1, g1, b1] = VIRIDIS[i + 1];
-
-  return [
-    Math.round(r0 + (r1 - r0) * f),
-    Math.round(g0 + (g1 - g0) * f),
-    Math.round(b0 + (b1 - b0) * f),
-    255,
-  ];
 }
