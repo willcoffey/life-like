@@ -294,13 +294,13 @@ export class LifeLike {
      * Iterate over each cell, skipping the edges since they don't have all their neighbors
      */
     for (let position = 0; position < grid.cells.length; position++) {
-      const neighbors = LifeLike.getNeighborhood(position, grid);
+      /** Sort is needed for determinism since floating point arithmatic is not communitive */
+      const neighbors = LifeLike.getNeighborhood(position, grid).sort();
 
       // Compute the odd of # of alive neighbors by computing odds of each possible neighbor state,
       // and summing them
-      const odds = LifeLike.computeNeighborTotalOdds(
-        LifeLike.computeNeighborStateOdds(neighbors),
-      );
+      //const odds = LifeLike.computeNeighborTotalOdds(LifeLike.computeNeighborStateOdds(neighbors));
+      const odds = LifeLike.computeNeighborTotalOddsDC(neighbors);
 
       // Apply the rules to the current state
       let state = NAMED_RULES.conway(grid, position, odds);
@@ -322,8 +322,8 @@ export class LifeLike {
       if (state >= 1) state = 1;
       else if (state <= 0) state = 0;
 
-      //nextState[position] = state
-      nextState[position] = Math.round(state * 1000) / 1000;
+      nextState[position] = state
+      //nextState[position] = Math.round(state * 1000) / 1000;
     }
 
     /** Apply any user interactions after grid has been computed to avoid partial updates */
@@ -397,6 +397,29 @@ export class LifeLike {
     }
 
     return odds;
+  }
+
+  /**
+   * Same output as computeNeighborTotalOdds(computeNeighborStateOdds(neighbors)),
+   * but computed by direct convolution of the Poisson binomial distribution.
+   * For each neighbor with alive-probability p, convolve the running distribution
+   * with [1-p, p]: new[k] = old[k]*(1-p) + old[k-1]*p. Walk k downward so the
+   * in-place update doesn't clobber old[k-1] before it's read.
+   * O(n^2) vs the O(n * 2^n) state-enumeration approach.
+   */
+  static computeNeighborTotalOddsDC(neighbors: number[]): number[] {
+    const n = neighbors.length;
+    const res: number[] = new Array(n + 1).fill(0);
+    res[0] = 1;
+    for (let i = 0; i < n; i++) {
+      const p = neighbors[i];
+      const q = 1 - p;
+      for (let k = i + 1; k > 0; k--) {
+        res[k] = res[k] * q + res[k - 1] * p;
+      }
+      res[0] = res[0] * q;
+    }
+    return res;
   }
 
   static createGrid(width: number, height: number): Grid {

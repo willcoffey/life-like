@@ -1,3 +1,26 @@
+# Wed Apr 22 11:18:41 AM EDT 2026
+Continued getting stuff moved into custom components. Appears ok in browser, now just need to 
+decide on what final features I want and write a post.
+
+in no particular order
+ - fix the brush controls
+ - decide on VIRIDIS scheme, maybe add themes
+ - investigate poisson binomials
+ - re-vamp keybindings to for param selection vs individual keys
+ - canvas size as element params
+
+---
+
+## Quick status update
+ - got direct convolution solver for poisson binomial so it runs much faster
+ - determinism should be fixed via sorting neighbors since floating point stuff not communitive
+
+## Rough task list
+ - refactor core to use a stack of pending operations, get rid of mouse state
+ - create terminal utility for generating images
+
+
+
 # Tue Apr 21 14:26:05 EDT 2026
 Starting to clean up an old personal project into a portfolio piece. Getting 
 re-aquainted with the source and cleaning it up

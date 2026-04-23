@@ -19,7 +19,7 @@ class LifeLikeElement extends HTMLElement {
   blinkControl: boolean = false;
   constructor() {
     super();
-    this.component = new LifeLike(100, 100);
+    this.component = new LifeLike(400, 400);
     this.vlk = new KeyBinder();
     this.handleCommands();
   }
@@ -61,7 +61,7 @@ class LifeLikeElement extends HTMLElement {
       this.render(this.component.grid, this.context!);
       setTimeout(() => {
         window.requestAnimationFrame(fn);
-      }, 50);
+      }, 0);
     };
     fn();
 

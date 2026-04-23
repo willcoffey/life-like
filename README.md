@@ -2,6 +2,11 @@ Good pattern
 .79, .31, .05
 1.88, .39, .05
 
+pM: 0.75 pX: 0.16 pY: 0.11
+pM: 1.44 pX: 0.31 pY: 0.47
+pM: 0.80 pX: 0.07 pY: 0.49
+pM: 0.57 pX: 0.91 pY: 0.06
+
 # Probabilistic version of Conways game of Life, and thoughts of other ideas of algo
 
 

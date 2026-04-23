@@ -65,7 +65,12 @@ export class StateDisplay extends HTMLElement {
     this.lastState = newString;
     for (const key of keys) {
       const el = this.shadow.getElementById(key);
-      if(el) el.innerHTML = `${key}: ${newGrid[key]}`
+      const value = newGrid[key];
+      if (typeof value === "number") {
+        if (el) el.innerHTML = `${key}: ${value.toFixed(2)}`;
+      } else {
+        if (el) el.innerHTML = `${key}: ${value}`;
+      }
     }
   }
 }
