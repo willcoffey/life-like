@@ -1,3 +1,20 @@
+# Fri Apr 24 01:32:49 AM EDT 2026
+
+I'm about to move on the metadata saving in the PNG for the non-cell graph state, but wanted to get
+down some architecture thoughts first.
+
+I want the web component to do as little as possible, mostly just a renderer with the underlying
+platform agnostic core code running most UX. At the same time, cursor position and mouse modes are
+not really relevant to a terminal app. 
+
+But, I do want to be able to record a web session, and send it to the terminal. the ability to do 
+this shows good seperation.
+
+
+
+
+
+
 # Thu Apr 23 11:56:27 AM EDT 2026
 Added a bunch of themes for colors based on human color perception. Unlike my handrolled method
 these themes don't cover the entire color space, so I can't import arbitrary images and expect
@@ -10,6 +27,65 @@ performance of it.
 
 stubbed out a terminal utility with ability to save pngs. Need to polish it with options and
 add grid settings via png metadata
+
+
+could I change it to nudge slightly in a direction. make continous in time
+
+`t_2 = (f(t_1) + t_1) / 2`?
+
+that had a cool effect
+
+---
+
+1. should I refactor play() to be web component only? And have component call tick.
+2. Finalize non-grid state
+
+logit params
+time smoothing
+width, height
+rules ????
+
+Then I have to think about UX state. I.e. cursor position
+
+If I ever want UX state shared, such as what param I'm tuning or where the c
+cursor is, I should keep it platform agnostic.
+
+what will the terminal utility look like
+
+replaying a list of commands from a file for things like symmetry, resets, brush strokes?
+
+Either I need commands embedded as json: { toggleCell: [112, 223] } etc
+
+or
+
+'moveDown'
+'moveDown'
+'moveDown'
+'moveRight'
+'tick'
+'tick'
+'tick'
+'toggleCell'
+
+do I even care about this?
+
+I need a way to load data in and out in command line right?
+
+but that could just be
+
+{ import: [0,0], data : "foo.bin" }
+
+
+
+---
+## scratch
+
+stdin is interface, a list of commands can be saved and replayed
+vlk directly binds to stdin, so if I want an action it must be bound to a command
+
+don't want list stdin commands to bloat too much
+if maps to vlk, it maxes out at total keybindings, which isn't too bad
+
 
 # Wed Apr 22 11:18:41 AM EDT 2026
 Continued getting stuff moved into custom components. Appears ok in browser, now just need to 

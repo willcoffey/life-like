@@ -140,6 +140,7 @@ class LifeLikeElement extends HTMLElement {
 
   async handleCommands() {
     for await (const command of this.vlk) {
+      console.log(command)
       switch (command.command) {
         case "blink-control":
           this.blinkControl = !this.blinkControl;
@@ -159,9 +160,10 @@ class LifeLikeElement extends HTMLElement {
 
     /** Keybindings for mode switching */
     /** @TODO change to system handlers
-    vlk.bind("<Escape>", "set-mode:normal", "Exit brush mode back to normal mode");
-    vlk.bind("<b>", "set-mode:brush", "Enter brush mode, for changing the parameters of the brush");
     */
+   console.log(vlk)
+    vlk.bind("brush:<n>", "set-mode:normal", "Exit brush mode back to normal mode");
+    vlk.bind("<b>", "set-mode:brush", "Enter brush mode, for changing the parameters of the brush");
 
     /** Controls for changing the m/x/y variables that modify final probabilities */
     vlk.bindKeys("<+>", "increase-prob-m", "normal");
