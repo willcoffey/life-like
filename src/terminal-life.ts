@@ -26,12 +26,14 @@ function printHelp() {
 `);
 }
 
-
 async function main() {
+  const now = Date.now();
   const opts = parseCommandLineOptions(Deno.args, {
     t: true,
     ticks: true,
     load: true,
+    width: true,
+    height: true,
     out: true,
   });
 
@@ -45,9 +47,11 @@ async function main() {
     /** If load is specified with a path, load the grid state from that PNG */
     life = new LifeLike(loadPng(opts.options.load));
   } else {
+    const width = Number(opts.options.width ?? 100);
+    const height = Number(opts.options.height ?? 100);
     life = new LifeLike({
-      width: 100,
-      height: 100,
+      width,
+      height,
       pM: 1.86,
       pX: .14,
       pY: -.23,
@@ -65,6 +69,7 @@ async function main() {
   if (opts.options.out) {
     savePng(life.grid, opts.options.out);
     console.log(`Saved file to ${opts.options.out}`);
+    console.log(`Took ${((Date.now() - now) / 1000 / 60).toFixed(2)} minutes`);
   }
 }
 

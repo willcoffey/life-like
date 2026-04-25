@@ -158,11 +158,27 @@ export class LifeLike {
     this.makeSymmetric();
     this.grid.playing = true;
 
-    this.grid.pM = Math.random() * 3;
-    this.grid.pX = Math.random() * 2; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
-    this.grid.pY = Math.random() - .5; // [2, 6] — bigger range since 3-root cubic has smaller nudge magnitude
+    this.grid.pM = Math.random() * 5;
+    this.grid.pX = Math.random() * 3;
+    this.grid.pY = 0;
 
-    LifeLike.addCircle(this.grid);
+    //LifeLike.addCircle(this.grid);
+    /*
+   */
+    for (let i = 0; i < this.grid.cells.length; i++) {
+      if (Math.random() > .8) {
+        this.grid.cells[i] = 1 - Math.random() / 10
+      }
+    }
+
+    /*
+    const center = Math.round(
+      (this.grid.width / 2) + ((this.grid.height - this.grid.height / 4) * this.grid.width),
+    );
+    for (let i = 0; i < 4; i++) {
+        this.grid.cells[center + i ] = .5;
+    }
+   */
   }
 
   play() {
@@ -284,6 +300,13 @@ export class LifeLike {
     for (let i = 0; i < neighbors.length; i++) {
       n[i] = grid.cells[neighbors[i]];
     }
+
+    /** Hack to prevent grid flowing to other side for testing */
+    if (y === 0) n[0] = n[1] = n[2] = 0;
+    if (y === grid.height - 1) n[5] = n[6] = n[7] = 0;
+    if (x === 0) n[0] = n[3] = n[5] = 0;
+    if (x === grid.width - 1) n[2] = n[4] = n[7] = 0;
+
     return n;
   }
 
@@ -308,42 +331,35 @@ export class LifeLike {
 
       // Apply the rules to the current state
       let state = NAMED_RULES.conway(grid, position, odds);
-
       //let state = NAMED_RULES.dayNight(grid, position, odds);
       //let state = NAMED_RULES.diomoeba(grid, position, odds);
       //let state = NAMED_RULES.anneal(grid, position, odds);
+
+      const x = position % grid.width + 1;
+      const y = (position - x) / grid.width + 1;
+
+      const maxAlpha = 40;
+      const maxBeta = 1.5;
+      const alphaChange = maxAlpha / grid.width;
+      const betaChange = maxBeta / grid.height;
+      //state = LifeLike.shape(state, alphaChange * x, betaChange * y);
+      //state = LifeLike.shapeProbability(state, alphaChange * x, .3, (betaChange * y) - .5);
+      //state = LifeLike.powerTransform(state, alphaChange * x);
+      state = LifeLike.sigmoid(state, alphaChange * x - 20 , betaChange * y - .75 );
+      //state = LifeLike.sigmoid(state, 8.5, .05);
 
       //state = LifeLike.sigmoid(state, grid.pX);
       //state = LifeLike.powerTransform(state, grid.amp).toFixed(8);
       //state = LifeLike.addition(state, grid.amp);
       //state = LifeLike.multiplication(state, grid.amp);
 
-      /*
-      if (state >= 1) state = 1;
-      else if (state <= 0) state = 0;
-      else if (state < pX) {
-        state = (state / pM) + pY;
-      } else {
-        state = 1 - ((1 - state) / pM) + pY;
-      }
-      if (state >= 1) state = 1;
-      else if (state <= 0) state = 0;
-      */
-
-      // Bistable cubic
-      /*  */
-      const a = 0.12;
-      for (let i = 0; i < 4; i++) {
-        state = state + pM * (state - a) * (1 - a - state) * (state - pX) + pY / 10;
-        if (state >= 1) state = 1;
-        else if (state <= 0) state = 0;
-      }
-
-      if (true || state !== 1 && state !== 0) {
-        const change_rate = 5;
+      if (state !== 1 && state !== 0) {
+        const change_rate = 1;
         const change = state - grid.cells[position];
         state = grid.cells[position] + (change / change_rate);
       }
+      /*
+     */
       nextState[position] = state;
 
       //nextState[position] = Math.round(state * 1000) / 1000;
@@ -352,6 +368,35 @@ export class LifeLike {
     /** Apply any user interactions after grid has been computed to avoid partial updates */
 
     return nextState;
+  }
+
+  static shape(p: number, threshold: number, drift: number): number {
+    // threshold ∈ [0, 1]  — basin boundary; values above flow to 1, below to 0
+    // drift ∈ small ℝ     — global pull toward 1 (positive) or 0 (negative)
+    for (let i = 0; i < 4; i++) {
+      p += (p - threshold) * p * (1 - p) + drift;
+      if (p < 0) p = 0;
+      else if (p > 1) p = 1;
+    }
+    if (p > 1) return 1;
+    if (p < 0) return 0;
+    return p;
+  }
+
+  static shapeProbability(state: number, m: number, x: number, y: number): number {
+    if (state >= 1) return 1;
+    if (state <= 0) return 0;
+    /** Apply my hacky function */
+
+    if (state < x) {
+      state = state / m + y;
+    } else {
+      state = 1 - ((1 - state) / m) + y;
+    }
+    /* */
+    if (state >= 1) return 1;
+    if (state <= 0) return 0;
+    return state;
   }
 
   static multiplication(prob: number, gamma: number): number {
@@ -366,11 +411,8 @@ export class LifeLike {
     return Math.pow(prob, gamma) / (Math.pow(prob, gamma) + Math.pow(1 - prob, gamma));
   }
 
-  static sigmoid(x: number, gamma: number): number {
-    const x_offset = .3;
-    const slope = -10;
-    let s = 1 / (1 + Math.pow(Math.E, gamma * (-x + x_offset)));
-    return s;
+  static sigmoid(value: number, gamma: number, offset: number): number {
+    return 1 / (1 + Math.pow(Math.E, gamma * (-value + offset)));
   }
 
   /**

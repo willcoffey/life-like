@@ -1,3 +1,10 @@
+# Sat Apr 25 05:16:54 PM EDT 2026
+I've been playing around with various parameters and tuning. Generating phase diagrams by tweaking
+params by x/y is cool, really useful insight into the changes a different shaping function makes.
+
+That said, I need to stop playing around making patterns and do a basic, minimal refactor. get the
+parameter stuff out of main function. delete dead code. clean up hacks. 
+
 # Fri Apr 24 01:32:49 AM EDT 2026
 
 I'm about to move on the metadata saving in the PNG for the non-cell graph state, but wanted to get
@@ -9,6 +16,31 @@ not really relevant to a terminal app.
 
 But, I do want to be able to record a web session, and send it to the terminal. the ability to do 
 this shows good seperation.
+
+---
+
+I made a fair amount of progress, got terminal PNG saving w/metadata and loading complete. Albeit
+with only ~8 bits of recovery from the loading as a bunch of data is lost in the image.
+
+I'm also approaching how much time I want to put into this project, and know there is more I would
+want to do. So it's a good time to make a rough list of what to do, what not to do, and what the
+minimum is.
+
+ - *README.md* - Final thing, need to document
+ - *core.test.ts* - Now that png saving/loading is done, it's easier to write some tests. just basic
+run - save - load - run check if same type thing. Need to think about it a little more as I 
+eventually intend this as a test case for 1-shotting via agent a version of core that uses shaders.
+ - Dead code cleanup, and general cleaning and readability refactor
+ - *web-component* - Need to get basic UX. Polish the brush briefly, outline the vim controls but
+I'm not going to try to make a lay-interface. maybe do some agent frontend gen. one more keybinding
+for theme toggle. maybe revisit when I polish vimlike.
+ - *logit and smoothing* - finalize these
+ - Find a bunch of params for pretty patterns. use one on my blog as header. maybe some imagemagick
+gif from png
+ - *per-frame-png* option for terminal utility, for making pretty gifs
+ - *blog post*
+
+
 
 
 

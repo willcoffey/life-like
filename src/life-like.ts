@@ -21,7 +21,7 @@ class LifeLikeElement extends HTMLElement {
   blinkControl: boolean = false;
   constructor() {
     super();
-    this.component = new LifeLike(200, 200);
+    this.component = new LifeLike({ width: 300, height: 300 });
     this.vlk = new KeyBinder();
     this.handleCommands();
   }
@@ -85,7 +85,6 @@ class LifeLikeElement extends HTMLElement {
     return el;
   }
 
-
   render(grid: Grid, context: CanvasRenderingContext2D) {
     const imgDataArray = new Uint8ClampedArray(grid.width * grid.height * 4);
     const imageData = new ImageData(imgDataArray, grid.width, grid.height);
@@ -140,7 +139,7 @@ class LifeLikeElement extends HTMLElement {
 
   async handleCommands() {
     for await (const command of this.vlk) {
-      console.log(command)
+      console.log(command);
       switch (command.command) {
         case "blink-control":
           this.blinkControl = !this.blinkControl;
@@ -160,8 +159,8 @@ class LifeLikeElement extends HTMLElement {
 
     /** Keybindings for mode switching */
     /** @TODO change to system handlers
-    */
-   console.log(vlk)
+     */
+    console.log(vlk);
     vlk.bind("brush:<n>", "set-mode:normal", "Exit brush mode back to normal mode");
     vlk.bind("<b>", "set-mode:brush", "Enter brush mode, for changing the parameters of the brush");
 

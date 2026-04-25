@@ -88,4 +88,4 @@ function randomTheme(): PaletteName {
   return names[Math.floor(Math.random() * names.length)];
 }
 //ColorMap.load(randomTheme());
-ColorMap.load("magma");
+ColorMap.load("turbo");
