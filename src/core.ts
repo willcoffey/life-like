@@ -274,10 +274,17 @@ export class LifeLike {
    * min and max should be between 0 and 1
    */
   resetRandom(density: number = .1, min: number = 0, max: number = 1) {
-    this.grid = LifeLike.createGrid({ width: this.grid.width, height: this.grid.height });
-    for (let i = 0; i < this.grid.cells.length; i++) {
-      if (Math.random() >= density) continue;
-      this.grid.cells[i] = min + (Math.random() * (max - min));
+    for (let position = 0; position < this.grid.cells.length; position++) {
+      const x = position % this.grid.width;
+      const y = (position - x) / this.grid.width;
+      const density = LifeLike.linearInterpolate(this.grid.width, x, 0, 1);
+      const min = LifeLike.linearInterpolate(this.grid.height, y, 0, 1);
+      if (Math.random() > density) {
+        const value = Math.random() * (1 - min) + min;
+        this.grid.cells[position] = value;
+      } else {
+        this.grid.cells[position] = 0;
+      }
     }
   }
 

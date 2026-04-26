@@ -2,6 +2,8 @@
 The general refactor is done, and now I need to wire in the controls. First I'll knock out a few
 simple things before getting into it.
  - update the reset random function to do linear interpolation of denisty / range
+ - eventaully update controls for component - directions change the range of the phase diagram
+with zoom in and out.
 
 # Sat Apr 25 05:16:54 PM EDT 2026
 I've been playing around with various parameters and tuning. Generating phase diagrams by tweaking
