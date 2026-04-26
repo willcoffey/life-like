@@ -5,6 +5,8 @@ simple things before getting into it.
  - eventaully update controls for component - directions change the range of the phase diagram
 with zoom in and out.
 
+## Rewiring input
+
 # Sat Apr 25 05:16:54 PM EDT 2026
 I've been playing around with various parameters and tuning. Generating phase diagrams by tweaking
 params by x/y is cool, really useful insight into the changes a different shaping function makes.
