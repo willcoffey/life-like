@@ -1,9 +1,29 @@
+# Sun Apr 26 10:26:19 AM EDT 2026
+The general refactor is done, and now I need to wire in the controls. First I'll knock out a few
+simple things before getting into it.
+ - update the reset random function to do linear interpolation of denisty / range
+
 # Sat Apr 25 05:16:54 PM EDT 2026
 I've been playing around with various parameters and tuning. Generating phase diagrams by tweaking
 params by x/y is cool, really useful insight into the changes a different shaping function makes.
 
 That said, I need to stop playing around making patterns and do a basic, minimal refactor. get the
 parameter stuff out of main function. delete dead code. clean up hacks. 
+
+---
+
+Finished refactor on core.ts, cleaning up and getting ready for some features. Still lots to 
+go.
+
+now need to decide on full grid props that account for state. width, height, alpha, beta, change rate
+etc. and get rid of the old ones.
+
+start with terminal utility setting up functionality via args
+ - theme
+ - a, b, r = alpha beta rate
+ - phase diagram with min & max
+ - activation - sigmoid, power, gaussian
+
 
 # Fri Apr 24 01:32:49 AM EDT 2026
 

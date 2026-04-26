@@ -27,9 +27,10 @@ const HTML = `
   <div id="mouseMode"></div>
   <div id="playing"></div>
   <div id="brushProb"></div>
-  <div id="pM"></div>
-  <div id="pX"></div>
-  <div id="pY"></div>
+  <div id="alpha"></div>
+  <div id="beta"></div>
+  <div id="changeRate"></div>
+
 </div>
 `;
 
@@ -55,7 +56,7 @@ export class StateDisplay extends HTMLElement {
     delete newGrid.cells;
     const newString = JSON.stringify(newGrid);
     if (newString === this.lastState) return;
-    const keys: (keyof Grid)[] = ["mouseMode", "playing", "brushProb", "pM", "pX", "pY"];
+    const keys: (keyof Grid)[] = ["mouseMode", "playing", "brushProb", "alpha", "beta", "changeRate"];
     this.lastState = newString;
     for (const key of keys) {
       const el = this.shadow?.getElementById(key);

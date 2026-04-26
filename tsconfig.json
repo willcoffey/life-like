@@ -3,9 +3,10 @@
     "noEmit": true,
     "target": "ESNext",
     "strict": true,
-    "moduleResolution": "nodenext",
-    "module": "nodenext",
+    "moduleResolution": "bundler",
+    "module": "esnext",
     "types": ["vite/client"],
     "allowImportingTsExtensions": true
-  }
+  },
+  "exclude": ["src/terminal-life.ts", "src/**/*.test.ts"]
 }

@@ -1,4 +1,4 @@
-import { parseCommandLineOptions } from "../../utilities/index.ts";
+import { CommandLineOptions, parseCommandLineOptions } from "../../utilities/index.ts";
 import { Grid, LifeLike } from "./core.ts";
 import { ColorMap } from "./lib/ColorMap.ts";
 import { PNG } from "pngjs";
@@ -31,31 +31,37 @@ async function main() {
   const opts = parseCommandLineOptions(Deno.args, {
     t: true,
     ticks: true,
+
+    // File input / output
     load: true,
+    out: true,
+
+    // Grid properties
     width: true,
     height: true,
-    out: true,
+    alpha: true,
+    beta: true,
+    rate: true,
+    phase: true,
+    activation: true,
   });
-
-  if (opts.flags.h || opts.flags.help) {
-    printHelp();
-    return;
-  }
-
+  if (opts.flags.h || opts.flags.help) return printHelp();
+  const inputGrid = parseGridFromArguments(opts);
   let life: LifeLike;
+
   if (opts.options.load) {
-    /** If load is specified with a path, load the grid state from that PNG */
-    life = new LifeLike(loadPng(opts.options.load));
+    /**
+     * If we are loading a PNG, we should use it's saved grid properties but override anything
+     * explicitly set by the command line arguments. except width & height.
+     */
+    const loadedGrid = loadPng(opts.options.load);
+    const { width, height } = loadedGrid;
+    Object.assign(inputGrid, loadedGrid);
+    Object.assign({ width, height }, loadedGrid);
+    life = new LifeLike(loadedGrid);
   } else {
-    const width = Number(opts.options.width ?? 100);
-    const height = Number(opts.options.height ?? 100);
-    life = new LifeLike({
-      width,
-      height,
-      pM: 1.86,
-      pX: .14,
-      pY: -.23,
-    });
+    /** Create a new grid with some random data */
+    life = new LifeLike(inputGrid);
     life.stdin({ command: "reset-random" });
   }
 
@@ -69,11 +75,51 @@ async function main() {
   if (opts.options.out) {
     savePng(life.grid, opts.options.out);
     console.log(`Saved file to ${opts.options.out}`);
-    console.log(`Took ${((Date.now() - now) / 1000 / 60).toFixed(2)} minutes`);
   }
+
+  console.log(`Took ${((Date.now() - now) / 1000 / 60).toFixed(2)} minutes`);
 }
 
-function loadPng(path: string) {
+function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
+  const { options } = args;
+  const grid: Partial<Grid> = {};
+
+  /** Parse all the numeric grid properties then validate them */
+  if (options.width !== undefined) grid.width = Number(options.width);
+  if (options.height !== undefined) grid.height = Number(options.height);
+  if (options.alpha !== undefined) grid.alpha = Number(options.alpha);
+  if (options.beta !== undefined) grid.beta = Number(options.beta);
+  if (options.rate !== undefined) grid.changeRate = Number(options.rate);
+
+  for (const [key, value] of Object.entries(grid)) {
+    if (Number.isNaN(value)) throw `Error: ${key} should be a number`;
+  }
+
+  /** Validate the string props - phase diagram range, validator function */
+  if (options.phase) {
+    const [min, max] = [...options.phase.split(",")].map((v) => Number(v));
+    if (Number.isNaN(min + max)) throw `Error: invalid range for phase diagram`;
+    grid.phaseDiagram = [min, max];
+  }
+
+  const { activation } = options;
+  if (activation) {
+    if (
+      activation !== "sigmoid" &&
+      activation !== "power" &&
+      activation !== "gaussian" &&
+      activation !== "will"
+    ) {
+      throw `Error: invalid activation function specified`;
+    }
+
+    grid.activation = activation;
+  }
+
+  return grid;
+}
+
+function loadPng(path: string): Grid {
   const bytes = Deno.readFileSync(path);
   const state = JSON.parse(extractLifeLikeTextChunk(bytes, "life-state"));
 
@@ -199,6 +245,7 @@ function createTextChunk(grid: Grid): Uint8Array {
   /** Determine the total size of the chunk */
   const keywordBytes = encoder.encode("life-state");
   const stateBytes = encoder.encode(getStateString(grid));
+
   const chunkSize = keywordBytes.length + stateBytes.length + 1;
 
   // The chunk + it's length field, type field, and CRC
@@ -221,8 +268,8 @@ function createTextChunk(grid: Grid): Uint8Array {
 }
 
 function getStateString(grid: Grid): string {
-  const { pX, pY, pM, width, height } = grid;
-  return JSON.stringify({ pX, pY, pM, width, height });
+  const { cells, ...serializable } = grid;
+  return JSON.stringify(serializable);
 }
 
 main();
