@@ -4,6 +4,7 @@ import { StateDisplay } from "./lib/state-display.ts";
 import { KeyBinder } from "vimlike-keybinder";
 import { Grid, LifeLike } from "./core.ts";
 import { ColorMap } from "./lib/ColorMap.ts";
+import { ColorScale } from "./lib/color-scale.ts";
 
 const CELL_SIZE = 1;
 /**
@@ -15,7 +16,9 @@ class LifeLikeElement extends HTMLElement {
   component: LifeLike;
   container: HTMLElement | null = null;
   canvas: HTMLCanvasElement | null = null;
+
   stateDisplay: null | StateDisplay = null;
+  colorScale: ColorScale | null = null;
   context: CanvasRenderingContext2D | undefined;
   vlk: KeyBinder;
 
@@ -40,6 +43,7 @@ class LifeLikeElement extends HTMLElement {
     this.shadow.innerHTML = html;
     this.container = this.shadow.getElementById("container");
     this.stateDisplay = this.getTypedEl("state-display", StateDisplay);
+    this.colorScale = this.getTypedEl("color-scale", ColorScale);
 
     /** Get the canvas context and set it's width */
     /** @TODO scale to size of canvas */
@@ -96,9 +100,10 @@ class LifeLikeElement extends HTMLElement {
       canvas.width = grid.width;
       canvas.height = grid.height;
     }
-
     context.putImageData(imageData, 0, 0);
+
     this.stateDisplay?.render(grid);
+    this.colorScale?.render();
   }
 
   /**

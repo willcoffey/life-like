@@ -33,7 +33,7 @@ const HTML = `
 </div>
 `;
 
-class ColorScale extends HTMLElement {
+export class ColorScale extends HTMLElement {
   shadow?: ShadowRoot;
   constructor() {
     super();
