@@ -1,4 +1,5 @@
 import { CommandLineOptions, parseCommandLineOptions } from "../../utilities/index.ts";
+import { Shapers } from "./shapers.ts";
 import { Grid, LifeLike } from "./core.ts";
 import { ColorMap } from "./lib/ColorMap.ts";
 import { PNG } from "pngjs";
@@ -9,7 +10,10 @@ function printHelp() {
   console.log(`
     Life-Like Terminal
     Runs a life-like cellular automaton grid for N ticks and optionally writes the result as a PNG.
-    Grid state (pM/pX/pY, dimensions) is embedded in a tEXt chunk so saved PNGs can be reloaded.
+    Non-cell grid state is embedded in a tEXt chunk so saved PNGs can be reloaded. Saving is a lossy
+    process since the cells are processed as Float64 but only ~8 bits can be recovered from themed
+    PNG images.
+      
     Usage: terminal-life [OPTIONS]
 
     -h --help     Print this help
@@ -97,22 +101,15 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
 
   /** Validate the string props - phase diagram range, validator function */
   if (options.phase) {
-    const [min, max] = [...options.phase.split(",")].map((v) => Number(v));
-    if (Number.isNaN(min + max)) throw `Error: invalid range for phase diagram`;
-    grid.phaseDiagram = [min, max];
+    const phaseRange = parsePhaseRange(options.phase);
+    if (phaseRange) grid.phaseDiagram = phaseRange;
   }
 
   const { activation } = options;
   if (activation) {
-    if (
-      activation !== "sigmoid" &&
-      activation !== "power" &&
-      activation !== "gaussian" &&
-      activation !== "will"
-    ) {
+    if (!(activation in Shapers)) {
       throw `Error: invalid activation function specified`;
     }
-
     grid.activation = activation;
   }
 
@@ -270,6 +267,39 @@ function createTextChunk(grid: Grid): Uint8Array {
 function getStateString(grid: Grid): string {
   const { cells, ...serializable } = grid;
   return JSON.stringify(serializable);
+}
+
+/**
+ * Takes in the phase diagram range specified via console in the format
+ * --phase 0:1,3:4
+ *
+ * where this parses to an alpha and beta min/max of 0,1 and 3,4 respectively
+ *
+ * input string is just the '0:1,3:4'
+ */
+function parsePhaseRange(
+  input: string,
+): { alpha: [number, number]; beta: [number, number] } | undefined {
+  const [alphaString, betaString] = input.split(",");
+  if (!alphaString || !betaString) throw `Error: invalid phase range specified`;
+
+  const [alphaMinString, alphaMaxString] = alphaString.split(":");
+  const [betaMinString, betaMaxString] = betaString.split(":");
+
+  const alphaMin = Number(alphaMinString);
+  const alphaMax = Number(alphaMaxString);
+  const betaMin = Number(betaMinString);
+  const betaMax = Number(betaMaxString);
+
+  if (!Number.isFinite(alphaMin)) return undefined;
+  if (!Number.isFinite(alphaMax)) return undefined;
+  if (!Number.isFinite(betaMin)) return undefined;
+  if (!Number.isFinite(betaMax)) return undefined;
+
+  return {
+    alpha: [alphaMin, alphaMax],
+    beta: [betaMin, betaMax],
+  };
 }
 
 main();

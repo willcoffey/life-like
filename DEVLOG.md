@@ -1,3 +1,27 @@
+# Mon Apr 27 12:18:50 PM EDT 2026
+Completed general refactor of controls / state. Just deleted the old mouse brush controls, may add
+back at some point but were too out of sync with the architecture.
+
+Extracted activation functions and started assigning them default windows for phase diagram
+rendering.
+
+Moved switch statement for stdin to a Controls object with "pure" functions that mutate grid state.
+
+misc hosuekeeping and bugfixes
+
+---
+
+Grid state is still not fully defined, contains two types of state.
+ - State required to compute next tick. The majority of state.
+ - State required for rendering / playback. Just 
+    - theme : which is needed to render to image and render from image.
+    - playing : which is read by the webcomponent, which then calls tick. This is the main
+    piece I want to remove eventually. means that recording stdin would result in 1000's of tick
+    commands if playing a lot. still need to think through the async "tick 100" pattern with a 
+    command buffer and mutated recording log.
+    
+
+
 # Sun Apr 26 10:26:19 AM EDT 2026
 The general refactor is done, and now I need to wire in the controls. First I'll knock out a few
 simple things before getting into it.
@@ -5,7 +29,18 @@ simple things before getting into it.
  - eventaully update controls for component - directions change the range of the phase diagram
 with zoom in and out.
 
+I've got the activation functions mostly wired in. Not getting the results I had before, need to 
+look into them. Also need to update my function to use 2 params instead of 3 so it can be 
+interpolated over.
+
 ## Rewiring input
+Phase diagram movement, zoom, parameter selection prototyped out. Functioning.
+
+- Need default phase diagram params for each activation function
+- Need to validate ranges on phase diagram to avoid issues when with params
+- Need to wire in controls for change rate control
+- Need to wire in controls for activation function change
+
 
 # Sat Apr 25 05:16:54 PM EDT 2026
 I've been playing around with various parameters and tuning. Generating phase diagrams by tweaking

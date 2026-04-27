@@ -14,6 +14,7 @@ class LifeLikeElement extends HTMLElement {
   shadow?: ShadowRoot;
   component: LifeLike;
   container: HTMLElement | null = null;
+  canvas: HTMLCanvasElement | null = null;
   stateDisplay: null | StateDisplay = null;
   context: CanvasRenderingContext2D | undefined;
   vlk: KeyBinder;
@@ -21,7 +22,11 @@ class LifeLikeElement extends HTMLElement {
   blinkControl: boolean = false;
   constructor() {
     super();
-    this.component = new LifeLike({ width: 300, height: 300 });
+    this.component = new LifeLike({
+      width: 300,
+      height: 300,
+      changeRate: 3,
+    });
     this.vlk = new KeyBinder();
     this.handleCommands();
   }
@@ -40,6 +45,7 @@ class LifeLikeElement extends HTMLElement {
     /** @TODO scale to size of canvas */
     //
     this.context = LifeLikeElement.getContext(this.shadow);
+    this.canvas = getByIdOrThrow(this.shadow, "grid") as HTMLCanvasElement;
 
     /** @TODO - scale to size of container
      */
@@ -47,7 +53,7 @@ class LifeLikeElement extends HTMLElement {
     this.context.canvas.height = this.component.grid.height;
 
     // Initial render
-    this.render(this.component.grid, this.context);
+    this.render(this.component.grid, this.context, this.canvas);
 
     /** Tick as fast as browser can animate  frame is complete */
     // @TODO Have LifeLike do loop and output updates to web component. Give it a framerate option
@@ -55,12 +61,13 @@ class LifeLikeElement extends HTMLElement {
 
     const fn = async () => {
       if (this.component.grid.playing) {
-        this.component.tick();
+        this.component.stdin({ "command": "tick" });
         if (this.blinkControl) {
-          this.component.tick();
+          this.component.stdin({ "command": "tick" });
         }
       }
-      this.render(this.component.grid, this.context!);
+      if (!this.canvas || !this.context) throw "Error: no canvas or context at render stage";
+      this.render(this.component.grid, this.context, this.canvas);
       setTimeout(() => {
         window.requestAnimationFrame(fn);
       }, 0);
@@ -69,7 +76,29 @@ class LifeLikeElement extends HTMLElement {
 
     this.listenForMouseEvents();
     this.setupKeyBindings();
-    this.component.play();
+  }
+
+  /**
+   * Main render function, called on connected to DOM and on play setTimeout loop
+   */
+  render(grid: Grid, context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
+    const imgDataArray = new Uint8ClampedArray(grid.width * grid.height * 4);
+    const imageData = new ImageData(imgDataArray, grid.width, grid.height);
+
+    for (let position = 0; position < grid.width * grid.height; position++) {
+      const [r, g, b, a] = ColorMap.getRGBA(grid.cells[position]);
+      imgDataArray[position * 4] = r;
+      imgDataArray[position * 4 + 1] = g;
+      imgDataArray[position * 4 + 2] = b;
+      imgDataArray[position * 4 + 3] = a;
+    }
+    if (canvas.width !== grid.width || canvas.height !== grid.height) {
+      canvas.width = grid.width;
+      canvas.height = grid.height;
+    }
+
+    context.putImageData(imageData, 0, 0);
+    this.stateDisplay?.render(grid);
   }
 
   /**
@@ -83,58 +112,6 @@ class LifeLikeElement extends HTMLElement {
     const el = this.shadow?.getElementById(id);
     if (!(el instanceof ctor)) throw `#${id} missing or not ${ctor.name}`;
     return el;
-  }
-
-  render(grid: Grid, context: CanvasRenderingContext2D) {
-    const imgDataArray = new Uint8ClampedArray(grid.width * grid.height * 4);
-    const imageData = new ImageData(imgDataArray, grid.width, grid.height);
-
-    for (let position = 0; position < grid.width * grid.height; position++) {
-      const [r, g, b, a] = ColorMap.getRGBA(grid.cells[position]);
-      imgDataArray[position * 4] = r;
-      imgDataArray[position * 4 + 1] = g;
-      imgDataArray[position * 4 + 2] = b;
-      imgDataArray[position * 4 + 3] = a;
-    }
-    context.putImageData(imageData, 0, 0);
-
-    /** Render the mouse brush */
-    const [mX, mY] = grid.mousePosition;
-    // Draw a circle
-    context.beginPath();
-    // make sure it is filled
-    context.arc(
-      mX * CELL_SIZE + CELL_SIZE / 2,
-      mY * CELL_SIZE + CELL_SIZE / 2,
-      grid.brushSize * CELL_SIZE,
-      0,
-      2 * Math.PI,
-    );
-    context.fillStyle = "rgba(50, 50, 50, 0.4)";
-    context.fill();
-    context.stroke();
-
-    this.stateDisplay?.render(grid);
-
-    /**
-     * Render the rest of the non-cell state as a subcomponent
-     */
-
-    /** Update the state of vars */
-    /*
-    this.shadow!.getElementById("mouse-mode")!.innerHTML = "Random";
-    this.shadow!.getElementById("playback-state")!.innerHTML = grid.playing ? "Playing" : "Paused";
-    this.shadow!.getElementById("brush-size")!.innerHTML = grid.brushSize.toString();
-    this.shadow!.getElementById("mouse-mode")!.innerHTML = grid.mouseMode;
-    this.shadow!.getElementById("brush-prob")!.innerHTML = grid.brushProb.toFixed(4);
-    this.shadow!.getElementById("kb-mode")!.innerHTML = this.vlk.state.mode;
-    this.shadow!.getElementById("flicker-control")!.innerHTML = `${this.blinkControl}`;
-
-    this.shadow!.getElementById("prob-m")!.innerHTML = grid.pM.toFixed(2);
-    this.shadow!.getElementById("prob-x")!.innerHTML = grid.pX.toFixed(2);
-    this.shadow!.getElementById("prob-y")!.innerHTML = grid.pY.toFixed(2);
-    */
-    /** y=mx+b for slope probability control */
   }
 
   async handleCommands() {
@@ -160,39 +137,62 @@ class LifeLikeElement extends HTMLElement {
     /** Keybindings for mode switching */
     /** @TODO change to system handlers
      */
-    console.log(vlk);
     vlk.bind("brush:<n>", "set-mode:normal", "Exit brush mode back to normal mode");
     vlk.bind("<b>", "set-mode:brush", "Enter brush mode, for changing the parameters of the brush");
 
-    /** Controls for changing the m/x/y variables that modify final probabilities */
-    vlk.bindKeys("<+>", "increase-prob-m", "normal");
-    vlk.bindKeys("<=>", "increase-prob-m", "normal");
-    vlk.bindKeys("<->", "decrease-prob-m", "normal");
-    vlk.bindKeys("<]>", "increase-prob-x", "normal");
-    vlk.bindKeys("<[>", "decrease-prob-x", "normal");
-    vlk.bindKeys("<'>", "increase-prob-y", "normal");
-    vlk.bindKeys("<;>", "decrease-prob-y", "normal");
-
-    vlk.bindKeys("<s>", "make-symmetric", "normal");
-    vlk.bindKeys("<r>", "reset-random", "normal");
-    vlk.bindKeys("<f>", "blink-control", "normal");
-
-    vlk.bindKeys("<+>", "increase-brush-prob", "brush");
-    vlk.bindKeys("<=>", "increase-brush-prob", "brush");
-    vlk.bindKeys("<->", "decrease-brush-prob", "brush");
-    vlk.bindKeys("<]>", "increase-brush", "brush");
-    vlk.bindKeys("<[>", "decrease-brush", "brush");
-    vlk.bindKeys("<m>", "mouse-mode", "brush");
-    vlk.bindKeys("< >", "play-pause", "normal");
-    vlk.bindKeys("<.>", "tick", "normal");
+    /**
+     * Moving and zooming the window into the phase diagram
+     */
     vlk.bindKeys("<l>", "move-right", "normal");
     vlk.bindKeys("<h>", "move-left", "normal");
     vlk.bindKeys("<j>", "move-down", "normal");
     vlk.bindKeys("<k>", "move-up", "normal");
-    vlk.bindKeys("<t>", "toggle-cell", "normal");
-    vlk.bindKeys("<x>", "reset", "normal");
-    vlk.bindKeys("<s-G>", "goto-end", "normal");
+    vlk.bindKeys("<=>", "zoom-in", "normal");
+    vlk.bindKeys("<+>", "zoom-in", "normal");
+    vlk.bindKeys("<->", "zoom-out", "normal");
+
+    // @TODO - goto standard resolution for current activation function
     vlk.bindKeys("<g><g>", "goto-start", "normal");
+
+    // Setting the center point of the current diagram as grid params
+    vlk.bindKeys("<Shift-Enter>", "select-params", "normal");
+    // Toggle between normal mode (wrap edges, constant params, and phase diagram)
+    vlk.bindKeys("<m>", "toggle-mode", "normal");
+
+    /** Increase the resolution of the grid */
+    vlk.bindKeys("<Shift-+>", "increase-res", "normal");
+    vlk.bindKeys("<Shift-->", "decrease-res", "normal");
+    vlk.bindKeys("<Shift-_>", "decrease-res", "normal");
+
+    /**
+     * Change the activation
+     */
+    vlk.bindKeys("<Shift-G>", "set-activation", "normal", "gaussian");
+    vlk.bindKeys("<Shift-S>", "set-activation", "normal", "sigmoid");
+    vlk.bindKeys("<Shift-W>", "set-activation", "normal", "will");
+
+    vlk.bindKeys("<a>", "next-activation", "normal");
+    vlk.bindKeys("<Shift-A>", "prev-activation", "normal");
+
+    vlk.bindKeys("<c>", "increase-rate", "normal");
+    vlk.bindKeys("<Shift-C>", "decrease-rate", "normal");
+
+    vlk.bindKeys("<t>", "next-theme", "normal");
+    vlk.bindKeys("<Shift-T>", "prev-theme", "normal");
+
+    /**
+     * bindings for manipulating the grid. reset, random pixels
+     */
+    vlk.bindKeys("<s>", "make-symmetric", "normal");
+    vlk.bindKeys("<r>", "reset-random", "normal");
+    vlk.bindKeys("<x>", "reset", "normal");
+
+    vlk.bindKeys("<f>", "blink-control", "normal");
+
+    vlk.bindKeys("< >", "play-pause", "normal");
+    vlk.bindKeys("<.>", "tick", "normal");
+
+    vlk.bindKeys("<Shift-D>", "debug", "normal");
   }
 
   /**
@@ -334,4 +334,10 @@ function getColorGradient(num: number, max: number) {
     if (n > 3) return 1;
     return 0;
   }
+}
+
+function getByIdOrThrow(root: ShadowRoot, id: string): HTMLElement {
+  const el = root.getElementById(id);
+  if (!el) throw "Error: Failed to get element for id";
+  return el;
 }
