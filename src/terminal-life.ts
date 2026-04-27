@@ -2,7 +2,7 @@ import { CommandLineOptions, parseCommandLineOptions } from "../../utilities/ind
 import { Shapers } from "./shapers.ts";
 import { Grid, LifeLike } from "./core.ts";
 import { ColorMap } from "./lib/ColorMap.ts";
-import { PNG } from "pngjs";
+import { PNG } from "npm:pngjs@7.0.0";
 import { Buffer } from "node:buffer";
 import { crc32 } from "node:zlib";
 
@@ -72,7 +72,7 @@ async function main() {
   /** If ticks is specified, tick the grid by that much */
   if (opts.options.ticks || opts.options.t) {
     const ticks = Number(opts.options.ticks ?? opts.options.t);
-    for (let i = 0; i < ticks; i++) life.tick();
+    for (let i = 0; i < ticks; i++) life.stdin({ "command": "tick" });
   }
 
   /** If an output path is specified, save the resulting PNG to that path */
