@@ -1,7 +1,8 @@
 {
   "scripts": {
     "host": "vite --host --port 3000",
-    "dev": "nodemon --watch ./src --ext '*' --exec 'npm run host'"
+    "dev": "nodemon --watch ./src --ext '*' --exec 'npm run host'",
+    "build": "vite build"
   },
   "dependencies": {
     "pngjs": "^7.0.0",
