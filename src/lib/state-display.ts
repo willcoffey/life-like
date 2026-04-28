@@ -36,11 +36,19 @@ const HTML = `
     padding: 6px;
     cursor: pointer;
   }
+  #actions textarea {
+    flex: 1;
+    font-family: inherit;
+    padding: 6px;
+    resize: none;
+    min-width: 0;
+  }
 </style>
 <div id="state-display">
   <div id="actions">
-    <button id="copy-json" type="button">copy json</button>
     <button id="copy-command" type="button">copy command</button>
+    <button id="copy-json" type="button">copy json</button>
+    <textarea id="paste-json" rows="1" placeholder="paste json state"></textarea>
   </div>
   <div id="playing"></div>
   <div id="activation"></div>
@@ -73,6 +81,23 @@ export class StateDisplay extends HTMLElement {
     this.shadow.getElementById("copy-command")?.addEventListener("click", () => {
       if (this.lastGrid) navigator.clipboard.writeText(toTerminalCommand(this.lastGrid));
     });
+
+    const pasteEl = this.shadow.getElementById("paste-json") as HTMLTextAreaElement | null;
+    pasteEl?.addEventListener("paste", (e) => {
+      const text = e.clipboardData?.getData("text") ?? "";
+      let state: unknown;
+      try {
+        state = JSON.parse(text);
+      } catch {
+        return; // let the textarea show what was pasted so user can see it failed
+      }
+      if (!state || typeof state !== "object") return;
+      e.preventDefault();
+      this.dispatchEvent(
+        new CustomEvent("load-state", { detail: state, bubbles: true, composed: true }),
+      );
+      pasteEl.value = "";
+    });
   }
 
   render(grid: Grid) {
@@ -103,15 +128,15 @@ export class StateDisplay extends HTMLElement {
  */
 function toTerminalCommand(grid: GridState): string {
   const parts = ["terminal-life"];
-  if (grid.width !== undefined) parts.push(`--width ${grid.width}`);
-  if (grid.height !== undefined) parts.push(`--height ${grid.height}`);
-  if (grid.alpha !== undefined) parts.push(`--alpha ${grid.alpha}`);
-  if (grid.beta !== undefined) parts.push(`--beta ${grid.beta}`);
-  if (grid.changeRate !== undefined) parts.push(`--rate ${grid.changeRate}`);
-  if (grid.activation !== undefined) parts.push(`--activation ${grid.activation}`);
-  if (grid.phaseDiagram) {
+  if (grid.width !== undefined) parts.push(`--width=${grid.width}`);
+  if (grid.height !== undefined) parts.push(`--height=${grid.height}`);
+  if (grid.alpha !== undefined) parts.push(`--alpha=${grid.alpha}`);
+  if (grid.beta !== undefined) parts.push(`--beta=${grid.beta}`);
+  if (grid.changeRate !== undefined) parts.push(`--rate=${grid.changeRate}`);
+  if (grid.activation !== undefined) parts.push(`--activation=${grid.activation}`);
+  if (grid.mode === "PhaseDiagram" && grid.phaseDiagram) {
     const { alpha, beta } = grid.phaseDiagram;
-    parts.push(`--phase ${alpha[0]}:${alpha[1]},${beta[0]}:${beta[1]}`);
+    parts.push(`--phase=${alpha[0]}:${alpha[1]},${beta[0]}:${beta[1]}`);
   }
   return parts.join(" ");
 }

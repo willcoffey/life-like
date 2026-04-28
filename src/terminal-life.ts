@@ -8,25 +8,41 @@ import { crc32 } from "node:zlib";
 
 function printHelp() {
   console.log(`
-    Life-Like Terminal
-    Runs a life-like cellular automaton grid for N ticks and optionally writes the result as a PNG.
-    Non-cell grid state is embedded in a tEXt chunk so saved PNGs can be reloaded. Saving is a lossy
-    process since the cells are processed as Float64 but only ~8 bits can be recovered from themed
-    PNG images.
-      
-    Usage: terminal-life [OPTIONS]
+Life-Like Terminal
 
-    -h --help     Print this help
-    -t --ticks N  Advance the grid by N ticks before saving (default: 0)
-    --load [FILENAME] Load initial grid (cells + embedded state) from PNG. If omitted grid random.
-    --out  [FILENAME] Write resulting grid to PNG file. If omitted, nothing is written.
+  Runs a life-like cellular automaton grid for N ticks and optionally writes the result as a PNG.
+  Non-cell grid state is embedded in a tEXt chunk so saved PNGs can be reloaded. Saving is a lossy
+  process since the cells are processed as Float64 but only ~8 bits can be recovered from themed
+  PNG images.
+
+  Usage: terminal-life [OPTIONS]
+
+  Note: arguments with negative values must use --name=value syntax (e.g. --alpha=-0.5).
+
+  -h --help         Print this help
+  -t --ticks N      Advance the grid by N ticks before saving (default: 0)
+  --load FILENAME   Load initial grid (cells + embedded state) from PNG. If omitted, grid is randomized.
+  --out FILENAME    Write resulting grid to PNG file. If omitted, nothing is written.
+  --width N         Grid width in cells. Ignored when --load is used.
+  --height N        Grid height in cells. Ignored when --load is used.
+  --alpha N         First shaping parameter for the activation function.
+  --beta N          Second shaping parameter for the activation function.
+  --rate N          Smoothing factor on per-tick updates; higher values apply smaller per-cell changes. 1 matches classic Conway.
+  --phase RANGE     PhaseDiagram mode: linearly interpolate alpha and beta across the grid using the given min:max ranges. Overrides fixed --alpha / --beta values.
+  --activation NAME Activation function to use (e.g. gaussian, sin, sigmoid). See shapers.ts for the full list.
 
 ============================================= Examples ============================================
-    # Seed a random grid, tick 50 times, save
-    terminal-life --ticks 50 --out run.png
+  # Seed a random grid, tick 50 times, save
+  terminal-life --ticks 50 --out run.png
 
-    # Resume a saved grid for another 25 ticks
-    terminal-life --load run.png -t 25 --out run-75.png
+  # Resume a saved grid for another 25 ticks
+  terminal-life --load run.png -t 25 --out run-75.png
+
+  # Run a custom fixed-mode grid with a sigmoid activation
+  terminal-life --width 200 --height 200 --activation sigmoid --alpha 1.2 --beta 0.4 --ticks 100 --out fixed.png
+
+  # Render a phase diagram by sweeping alpha and beta
+  terminal-life --width 400 --height 400 --rate 5 --activation gaussian --phase=-0.470:0.668,-0.319:0.319 --ticks 10 --out phase.png
 `);
 }
 
@@ -66,7 +82,11 @@ async function main() {
   } else {
     /** Create a new grid with some random data */
     life = new LifeLike(inputGrid);
-    life.stdin({ command: "reset-random" });
+
+    /** If we are in fixed mode, seed with random data */
+    if (!inputGrid.mode) {
+      life.stdin({ command: "reset-random" });
+    } 
   }
 
   /** If ticks is specified, tick the grid by that much */
@@ -86,7 +106,7 @@ async function main() {
 
 function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
   const { options } = args;
-  const grid: Partial<Grid> = {};
+  const grid: Partial<Grid> = { mode: "Fixed" };
 
   /** Parse all the numeric grid properties then validate them */
   if (options.width !== undefined) grid.width = Number(options.width);
@@ -100,9 +120,13 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
   }
 
   /** Validate the string props - phase diagram range, validator function */
+
   if (options.phase) {
     const phaseRange = parsePhaseRange(options.phase);
-    if (phaseRange) grid.phaseDiagram = phaseRange;
+    if (phaseRange) {
+      grid.phaseDiagram = phaseRange;
+      grid.mode = "PhaseDiagram";
+    }
   }
 
   const { activation } = options;

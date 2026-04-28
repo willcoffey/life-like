@@ -80,6 +80,12 @@ class LifeLikeElement extends HTMLElement {
 
     this.listenForMouseEvents();
     this.setupKeyBindings();
+
+    /** For pasting JSON into the interface */
+    this.stateDisplay?.addEventListener("load-state", (e) => {
+      const detail = (e as CustomEvent).detail;
+      this.component.stdin({ command: "load-state", args: detail });
+    });
   }
 
   /**
