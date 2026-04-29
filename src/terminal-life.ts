@@ -23,6 +23,7 @@ Life-Like Terminal
   -t --ticks N      Advance the grid by N ticks before saving (default: 0)
   --load FILENAME   Load initial grid (cells + embedded state) from PNG. If omitted, grid is randomized.
   --out FILENAME    Write resulting grid to PNG file. If omitted, nothing is written.
+  --stream          Stream PNG of each frame to stdout for use with ImageMagick pipelines
   --width N         Grid width in cells. Ignored when --load is used.
   --height N        Grid height in cells. Ignored when --load is used.
   --alpha N         First shaping parameter for the activation function.
@@ -30,6 +31,8 @@ Life-Like Terminal
   --rate N          Smoothing factor on per-tick updates; higher values apply smaller per-cell changes. 1 matches classic Conway.
   --phase RANGE     PhaseDiagram mode: linearly interpolate alpha and beta across the grid using the given min:max ranges. Overrides fixed --alpha / --beta values.
   --activation NAME Activation function to use (e.g. gaussian, sin, sigmoid). See shapers.ts for the full list.
+  --theme           Name of a palette. magma, inferno, plasma, viridis, cividis, turbo, berlin, managua, vanimo
+  -v --verbose      Log output details
 
 ============================================= Examples ============================================
   # Seed a random grid, tick 50 times, save
@@ -64,9 +67,13 @@ async function main() {
     rate: true,
     phase: true,
     activation: true,
+    theme: true,
   });
+
   if (opts.flags.h || opts.flags.help) return printHelp();
+  const verbose = opts.flags.v ?? opts.flags.verbose;
   const inputGrid = parseGridFromArguments(opts);
+
   let life: LifeLike;
 
   if (opts.options.load) {
@@ -76,36 +83,51 @@ async function main() {
      */
     const loadedGrid = loadPng(opts.options.load);
     const { width, height } = loadedGrid;
-    Object.assign(inputGrid, loadedGrid);
-    Object.assign({ width, height }, loadedGrid);
+    Object.assign(loadedGrid, inputGrid);
+    Object.assign(loadedGrid, { width, height });
     life = new LifeLike(loadedGrid);
   } else {
     /** Create a new grid with some random data */
     life = new LifeLike(inputGrid);
 
     /** If we are in fixed mode, seed with random data */
-    if (!inputGrid.mode) {
+    if (!inputGrid.mode || inputGrid.mode === 'Fixed') {
       life.stdin({ command: "reset-random" });
-    } 
+    }
   }
 
   /** If ticks is specified, tick the grid by that much */
   if (opts.options.ticks || opts.options.t) {
     const ticks = Number(opts.options.ticks ?? opts.options.t);
-    for (let i = 0; i < ticks; i++) life.stdin({ "command": "tick" });
+    for (let i = 0; i < ticks; i++) {
+      if (opts.flags.stream) {
+        //await Deno.stdout.write(makeRgbaBuffer(life.grid));
+        //Deno.stdout.writeSync(makeRgbaBuffer(life.grid));
+        writeAll(makeRgbaBuffer(life.grid))
+      }
+      life.stdin({ "command": "tick" });
+    }
   }
 
   /** If an output path is specified, save the resulting PNG to that path */
   if (opts.options.out) {
     savePng(life.grid, opts.options.out);
-    console.log(`Saved file to ${opts.options.out}`);
+    if (verbose) console.log(`Saved file to ${opts.options.out}`);
   }
 
-  console.log(`Took ${((Date.now() - now) / 1000 / 60).toFixed(2)} minutes`);
+  if (verbose) console.log(`Took ${((Date.now() - now) / 1000 / 60).toFixed(2)} minutes`);
+}
+
+function writeAll(buffer: Uint8Array) {
+  let bytesWritten = 0;
+  while (bytesWritten < buffer.length) {
+    const written = Deno.stdout.writeSync(buffer.subarray(bytesWritten));
+    bytesWritten += written;
+  }
 }
 
 function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
-  const { options } = args;
+  const { options, flags } = args;
   const grid: Partial<Grid> = { mode: "Fixed" };
 
   /** Parse all the numeric grid properties then validate them */
@@ -120,14 +142,17 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
   }
 
   /** Validate the string props - phase diagram range, validator function */
-
   if (options.phase) {
     const phaseRange = parsePhaseRange(options.phase);
     if (phaseRange) {
       grid.phaseDiagram = phaseRange;
       grid.mode = "PhaseDiagram";
+    } else {
     }
   }
+
+  /** phase was specified without a range, use activation default */
+  if (flags.phase) grid.mode = "PhaseDiagram";
 
   const { activation } = options;
   if (activation) {
@@ -137,12 +162,16 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
     grid.activation = activation;
   }
 
+  const { theme } = options;
+  if (theme) grid.theme = theme;
+
   return grid;
 }
 
 function loadPng(path: string): Grid {
   const bytes = Deno.readFileSync(path);
   const state = JSON.parse(extractLifeLikeTextChunk(bytes, "life-state"));
+  ColorMap.load(state.theme)
 
   const png = PNG.sync.read(Buffer.from(bytes));
   const cells = pixelsToCells(png.data, png.width, png.height);
@@ -233,7 +262,14 @@ function savePng(grid: Grid, path: string) {
  *  zTXt - same as above except compressed
  *  iTXt - fancy. UTF-8, compression flag, compression method, language
  */
-function gridToPng({ cells, width, height }: Grid): Uint8Array {
+function gridToPng(grid: Grid): Uint8Array {
+  const buffer = makeRgbaBuffer(grid);
+  const png = new PNG({ width: grid.width, height: grid.height, colorType: 6 });
+  png.data = Buffer.from(buffer);
+  return PNG.sync.write(png);
+}
+
+function makeRgbaBuffer({ cells, width, height }: Grid): Uint8Array {
   const buffer = new Uint8Array(width * height * 4);
   for (let i = 0; i < cells.length; i++) {
     const [r, g, b, a] = ColorMap.getRGBA(cells[i]);
@@ -242,9 +278,7 @@ function gridToPng({ cells, width, height }: Grid): Uint8Array {
     buffer[i * 4 + 2] = b;
     buffer[i * 4 + 3] = a;
   }
-  const png = new PNG({ width, height, colorType: 6 });
-  png.data = Buffer.from(buffer);
-  return PNG.sync.write(png);
+  return buffer;
 }
 
 /**

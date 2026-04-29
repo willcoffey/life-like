@@ -1,3 +1,52 @@
+# Wed Apr 29 13:16:34 EDT 2026
+
+## Priorities
+ - Cleanup `core.ts` now that algorithm is settled
+ - Investigate structural changes to core.ts for porting to shaders. Specifically how the cell state
+is rendered and manipulated since cpu won't have efficient access.
+ - Merge blog post and start testing formatting and image embeddings.
+
+I've done a fair amount of hacking and experimenting and feel it's now time to start cleaning up and
+formalizing things again. My most important takeaways from my exploration
+
+ - I need to make my terminology more consistent for things I've rediscovered from Lenia. Mainly 
+things like P, T, R. Neighborhood calculation. Make smoothing formula named the same and rearrange
+my terms to align. 
+
+T = time smoothing
+R = neighborhood radius
+P = quantization - essentially how many bits you allow for state. I'm just using a float and 
+treating it as continous, which is how lenia is generally run but I don't like this. I do want a
+principled way to use a discrete state value but am not addressing this any time soon.
+
+ - Larger neighborhoods are trivially easy to add, and give another paramter. Painfully slow and
+FFT optimization of convolution is not worth it until very large neighborhood. I think ~ 750 total
+cells or so. 
+
+ - Combining multiple life-like rules created dynamic behaviour without the need for an activation
+function. Worth exploring.
+
+ - PhaseDiagrams are great, and more views should be added. smoothing vs alpha, R vs beta etc etc.
+Another feature that is a great "some day eddition"
+
+I've mostly settled on the state update algorithm and am no longer messing with it. So I can clean
+it up and add tests.
+
+essentially
+    1. Create PMF from neighborhood(R)
+    2. Apply life-like or larger than life rules
+    3. Apply activation function (alpha, beta)
+    4. Apply smoothing (T)
+
+Worth noting is that the activation function takes 2 parameters purely for phase diagram 
+exploration.
+
+@TODO --raw-stream option to terminal life for raw floats
+@TODO Testing via hash of every frame for a phase diagram at high res with seeded random
+@TODO --bench option for terminal-life
+
+
+
 # Mon Apr 27 12:18:50 PM EDT 2026
 Completed general refactor of controls / state. Just deleted the old mouse brush controls, may add
 back at some point but were too out of sync with the architecture.

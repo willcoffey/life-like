@@ -26,9 +26,9 @@ class LifeLikeElement extends HTMLElement {
   constructor() {
     super();
     this.component = new LifeLike({
-      width: 300,
-      height: 300,
-      changeRate: 3,
+      width: 50,
+      height: 50,
+      changeRate: 1,
     });
     this.vlk = new KeyBinder();
     this.handleCommands();

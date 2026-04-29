@@ -134,6 +134,7 @@ function toTerminalCommand(grid: GridState): string {
   if (grid.beta !== undefined) parts.push(`--beta=${grid.beta}`);
   if (grid.changeRate !== undefined) parts.push(`--rate=${grid.changeRate}`);
   if (grid.activation !== undefined) parts.push(`--activation=${grid.activation}`);
+  if (grid.theme !== undefined) parts.push(`--theme=${grid.theme}`);
   if (grid.mode === "PhaseDiagram" && grid.phaseDiagram) {
     const { alpha, beta } = grid.phaseDiagram;
     parts.push(`--phase=${alpha[0]}:${alpha[1]},${beta[0]}:${beta[1]}`);

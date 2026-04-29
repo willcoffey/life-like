@@ -1,3 +1,4 @@
+type Shape = "moore" | "vonNeumann" | "circular";
 import { NAMED_RULES } from "./lib/rules.ts";
 import { ShaperName, Shapers } from "./shapers.ts";
 // ColorMap is a global singleton that contains the current theme.
@@ -54,15 +55,13 @@ export class LifeLike {
   /**
    * Create a new grid assuming defaults but accepting any partial Grid properties
    */
-  static createGrid(initial: Partial<Grid> = { width: 100, height: 100 }): Grid {
-    const width = initial.width ?? 100;
-    const height = initial.height ?? 100;
+  static createGrid(initial: Partial<Grid> = {}): Grid {
     const grid: Grid = {
-      width,
-      height,
+      width: initial.width ? initial.width : 100,
+      height: initial.height ? initial.height : 100,
+      cells: new Float64Array(),
       mode: "PhaseDiagram",
       // New bytes are initialized to 0
-      cells: new Float64Array(new ArrayBuffer(8 * width * height)),
       playing: false,
       alpha: 1,
       beta: .5,
@@ -72,6 +71,13 @@ export class LifeLike {
       theme: "viridis",
     };
     Object.assign(grid, initial);
+    /**
+     * If the initial grid didn't specify its cells or phase diagram, update it
+     * based on what is specified.
+     */
+    if (!initial.cells) grid.cells = new Float64Array(8 * grid.width * grid.height);
+    if (!initial.phaseDiagram) grid.phaseDiagram = Shapers[grid.activation].diagram;
+
     ColorMap.load(grid.theme);
     return grid;
   }
@@ -96,76 +102,67 @@ export class LifeLike {
     const wrap = grid.mode === "Fixed";
     /** Create a new 1D array of 8 bit floats that represent grid state */
     const nextState = new Float64Array(new ArrayBuffer(8 * grid.width * grid.height));
+
     for (let position = 0; position < grid.cells.length; position++) {
-      // Output state to be modified via rules, shaping functions, and rate of change
-      let state = 0;
+      let state = 0; // State is iteretively modified by rules & activation function
       // Sort is needed for determinism since floating point arithmatic is not associative
-      const neighbors = LifeLike.getNeighborhood(position, grid, wrap).sort();
-      // Compute the odds that are used for applying conways rules or other life-like rules.
+      //const neighbors = LifeLike.getNeighborhood(position, grid, wrap).sort();
+      const neighbors = LifeLike.getLargerNeighborhood(position, grid, 5).sort();
+
+      // Comput PMF, result is an array wher pmf[i] = odds of i living neighbors
       const odds = LifeLike.computeNeighborTotalOddsDC(neighbors);
 
-      /**
-       * Apply the life-like rules. Since the system is probabilistic, multiple sets of rules
-       * can be combined. A simulation could be 75% conways and 25% diomoeba
-       *
-       * named rule list: dayNight, diomoeba, anneal
-       */
-      state = (
-        2 * NAMED_RULES.conway(grid, position, odds) +
-        NAMED_RULES.diomoeba(grid, position, odds)
-      ) / 3;
-
-      state = NAMED_RULES.diomoeba(grid, position, odds);
-      //
+      // Apply rules to PMF
       //state = NAMED_RULES.conway(grid, position, odds);
-
-      // Floating point stuff
-      state = Math.min(1, Math.max(0, state));
-
-      /**
-       * Apply the shaping function to get interesting behaviour out of the rules, if creating
-       * a phase diagram these vary based on x/y position, otherwise use grid state properties
-       */
+      state = NAMED_RULES.ltl(grid, position, odds);
+      // Get the activation function and alpha/beta params
+      const [alpha, beta] = LifeLike.getAlphaBeta(grid, position);
       const activation = Shapers[grid.activation].fn;
+
+      // apply the activation function
+      state = activation(state, alpha, beta);
+      // smooth the time step
+      state = grid.cells[position] + ((state - grid.cells[position]) / grid.changeRate);
+      nextState[position] = isNaN(state) ? 0 : state;
+
+      // Set next state value
+      /** @TODO
+       * This was a hacky test of seeing interpolating between life-like rules. it actually works
+       * and produces output without the need for an activation function. Worth refactoring at
+       * some point to do a better job of exploring the compbinations
       if (grid.mode === "Fixed") {
-        //state = LifeLike.gaussian(state, grid.alpha, grid.beta);
-        state = activation(state, grid.alpha, grid.beta);
-      } else if (grid.phaseDiagram) {
+        const a = grid.alpha;
+        const b = grid.beta;
+        state = (a * NAMED_RULES.diomoeba(grid, position, odds) +
+          b * NAMED_RULES.anneal(grid, position, odds)) / (a + b);
+      } else {
         const x = position % grid.width + 1;
         const y = (position - x) / grid.width;
         const [minA, maxA] = grid.phaseDiagram.alpha;
         const [minB, maxB] = grid.phaseDiagram.beta;
-
-        /** Hard coded values found through experimentation */
-        /* Use on gaussian
-        const a = LifeLike.linearInterpolate(grid.width, x, -.5, .5);
-        const b = LifeLike.linearInterpolate(grid.height, y, -.5, .5);
-        */
-
-        /**
-        * power transform
-        const a = LifeLike.linearInterpolate(grid.width, x, .001, 6);
-        const b = LifeLike.linearInterpolate(grid.height, y, .25, .6);
-       */
-
         const a = LifeLike.linearInterpolate(grid.width, x, minA, maxA);
         const b = LifeLike.linearInterpolate(grid.height, y, minB, maxB);
-
-        state = activation(state, a, b);
+        state = (a * NAMED_RULES.diomoeba(grid, position, odds) +
+          b * NAMED_RULES.anneal(grid, position, odds)) / (a + b);
       }
-
-      /**
-       * Apply the change rate of the grid. Undecided if I should hardcode 0 and 1 to preserve
-       * conway behaviour on integer state values on all settings
        */
-      const change = state - grid.cells[position];
-      state = grid.cells[position] + (change / grid.changeRate);
-
-      // Set next state value
-      nextState[position] = isNaN(state) ? 0 : state;
     }
 
     return nextState;
+  }
+
+  static getAlphaBeta(grid: Grid, position: number): [number, number] {
+    if (grid.mode === "Fixed") {
+      return [grid.alpha, grid.beta];
+    } else {
+      const x = position % grid.width + 1;
+      const y = (position - x) / grid.width;
+      const [minA, maxA] = grid.phaseDiagram.alpha;
+      const [minB, maxB] = grid.phaseDiagram.beta;
+      const a = LifeLike.linearInterpolate(grid.width, x, minA, maxA);
+      const b = LifeLike.linearInterpolate(grid.height, y, minB, maxB);
+      return [a, b];
+    }
   }
 
   static linearInterpolate(size: number, i: number, min: number, max: number): number {
@@ -240,6 +237,47 @@ export class LifeLike {
       if (x === grid.width - 1) n[2] = n[4] = n[7] = 0;
     }
     return n;
+  }
+
+  static getLargerNeighborhood(
+    position: number,
+    grid: Grid,
+    R: number,
+    shape: Shape = "circular",
+  ): number[] {
+    const x = position % grid.width;
+    const y = (position - x) / grid.width;
+    const neighbors: number[] = [];
+
+    for (let dy = -R; dy <= R; dy++) {
+      for (let dx = -R; dx <= R; dx++) {
+        if (dx === 0 && dy === 0) continue; // exclude center
+
+        // Shape mask — pick which cells count as "in the neighborhood"
+        let inShape: boolean;
+        switch (shape) {
+          case "moore":
+            inShape = true;
+            break; // full square
+          case "vonNeumann":
+            inShape = Math.abs(dx) + Math.abs(dy) <= R;
+            break; // diamond
+          case "circular":
+            inShape = dx * dx + dy * dy <= R * R;
+            break; // disc
+        }
+        if (!inShape) continue;
+
+        const nx = x + dx;
+        const ny = y + dy;
+        neighbors.push(
+          nx < 0 || nx >= grid.width || ny < 0 || ny >= grid.height
+            ? 0
+            : grid.cells[ny * grid.width + nx],
+        );
+      }
+    }
+    return neighbors;
   }
 
   /**
@@ -347,8 +385,8 @@ const Controls = {
    * magnitude of life cells
    */
   "reset-random"(grid) {
-    const densityRange = [.9999, .9999];
-    const valueRange = [.8, .8];
+    const densityRange = [0, 1];
+    const valueRange = [0, .5];
 
     for (let position = 0; position < grid.cells.length; position++) {
       const x = position % grid.width;
