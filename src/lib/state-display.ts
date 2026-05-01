@@ -1,6 +1,6 @@
 import { Grid } from "../core";
 type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
-type GridState = PartialBy<Grid, "cells">;
+type GridState = PartialBy<Grid, "cells" | "cache">;
 /**
  * Visual bar to represent the values 0 - 1 in the automatas color scale
  */
@@ -102,8 +102,10 @@ export class StateDisplay extends HTMLElement {
 
   render(grid: Grid) {
     /** Check against old state and return early if nothing has changed */
-    const newGrid: GridState = { ...grid };
+    const newGrid: GridState = { ...grid }
     delete newGrid.cells;
+    delete newGrid.cache;
+
     const newString = JSON.stringify(newGrid);
     if (newString === this.lastState) return;
     const keys: (keyof Grid)[] = ["playing", "activation", "alpha", "beta", "changeRate", "theme"];

@@ -1,10 +1,13 @@
 import { CommandLineOptions, parseCommandLineOptions } from "../../utilities/index.ts";
-import { Shapers } from "./shapers.ts";
+import { isShaperName } from "./shapers.ts";
 import { Grid, LifeLike } from "./core.ts";
-import { ColorMap } from "./lib/ColorMap.ts";
+import { ColorMap, isPaletteName, PaletteName } from "./lib/ColorMap.ts";
 import { PNG } from "npm:pngjs@7.0.0";
 import { Buffer } from "node:buffer";
 import { crc32 } from "node:zlib";
+
+/** Used for mapping floats to rgba and vice versa */
+const colorMap = new ColorMap();
 
 function printHelp() {
   console.log(`
@@ -33,6 +36,8 @@ Life-Like Terminal
   --activation NAME Activation function to use (e.g. gaussian, sin, sigmoid). See shapers.ts for the full list.
   --theme           Name of a palette. magma, inferno, plasma, viridis, cividis, turbo, berlin, managua, vanimo
   -v --verbose      Log output details
+
+  --rule            r4s24..28b24..30
 
 ============================================= Examples ============================================
   # Seed a random grid, tick 50 times, save
@@ -68,6 +73,7 @@ async function main() {
     phase: true,
     activation: true,
     theme: true,
+    rule: true,
   });
 
   if (opts.flags.h || opts.flags.help) return printHelp();
@@ -89,9 +95,13 @@ async function main() {
   } else {
     /** Create a new grid with some random data */
     life = new LifeLike(inputGrid);
+    if(verbose) {
+      console.log(life.grid)
+      console.log("Total neighbor cells: " + life.grid.cache.neighborhood.length)
+    }
 
     /** If we are in fixed mode, seed with random data */
-    if (!inputGrid.mode || inputGrid.mode === 'Fixed') {
+    if (!inputGrid.mode || inputGrid.mode === "Fixed") {
       life.stdin({ command: "reset-random" });
     }
   }
@@ -101,9 +111,7 @@ async function main() {
     const ticks = Number(opts.options.ticks ?? opts.options.t);
     for (let i = 0; i < ticks; i++) {
       if (opts.flags.stream) {
-        //await Deno.stdout.write(makeRgbaBuffer(life.grid));
-        //Deno.stdout.writeSync(makeRgbaBuffer(life.grid));
-        writeAll(makeRgbaBuffer(life.grid))
+        writeAll(makeRgbaBuffer(life.grid));
       }
       life.stdin({ "command": "tick" });
     }
@@ -151,19 +159,26 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
     }
   }
 
+  if (options.rule) {
+    grid.rule = options.rule;
+  }
+
   /** phase was specified without a range, use activation default */
   if (flags.phase) grid.mode = "PhaseDiagram";
 
   const { activation } = options;
   if (activation) {
-    if (!(activation in Shapers)) {
+    if (!isShaperName(activation)) {
       throw `Error: invalid activation function specified`;
     }
     grid.activation = activation;
   }
 
   const { theme } = options;
-  if (theme) grid.theme = theme;
+  if (theme && isPaletteName(theme)) {
+    grid.theme = theme;
+    colorMap.load(theme);
+  }
 
   return grid;
 }
@@ -171,10 +186,10 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
 function loadPng(path: string): Grid {
   const bytes = Deno.readFileSync(path);
   const state = JSON.parse(extractLifeLikeTextChunk(bytes, "life-state"));
-  ColorMap.load(state.theme)
+  colorMap.load(state.theme);
 
   const png = PNG.sync.read(Buffer.from(bytes));
-  const cells = pixelsToCells(png.data, png.width, png.height);
+  const cells = pixelsToCells(png.data, png.width, png.height, state.neighborhoodSize);
 
   return { ...state, cells };
 }
@@ -219,14 +234,27 @@ function extractLifeLikeTextChunk(bytes: Uint8Array, keyword: string): string {
   return "{}";
 }
 
-function pixelsToCells(data: Uint8Array, width: number, height: number): Float64Array {
-  const cells = new Float64Array(width * height);
-  for (let i = 0; i < cells.length; i++) {
-    const r = data[i * 4];
-    const g = data[i * 4 + 1];
-    const b = data[i * 4 + 2];
-    const a = data[i * 4 + 3];
-    cells[i] = ColorMap.fromRGBA(ColorMap.getRGBA, r, g, b, a);
+function pixelsToCells(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  neighborhoodSize: number,
+): Float64Array {
+  const r = neighborhoodSize;
+  const physWidth = width + 2 * r;
+  const physHeight = height + 2 * r;
+  const cells = new Float64Array(physWidth * physHeight);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const src = (y * width + x) * 4;
+      const physPos = (y + r) * physWidth + (x + r);
+      cells[physPos] = colorMap.fromRGBA(
+        data[src],
+        data[src + 1],
+        data[src + 2],
+        data[src + 3],
+      );
+    }
   }
   return cells;
 }
@@ -269,14 +297,16 @@ function gridToPng(grid: Grid): Uint8Array {
   return PNG.sync.write(png);
 }
 
-function makeRgbaBuffer({ cells, width, height }: Grid): Uint8Array {
+function makeRgbaBuffer(grid: Grid): Uint8Array {
+  const { cells, width, height } = grid;
   const buffer = new Uint8Array(width * height * 4);
-  for (let i = 0; i < cells.length; i++) {
-    const [r, g, b, a] = ColorMap.getRGBA(cells[i]);
-    buffer[i * 4] = r;
-    buffer[i * 4 + 1] = g;
-    buffer[i * 4 + 2] = b;
-    buffer[i * 4 + 3] = a;
+  for (const [position, x, y] of LifeLike.cellIterator(grid)) {
+    const [r, g, b, a] = colorMap.getRGBA(cells[position]);
+    const i = (y * width + x) * 4;
+    buffer[i] = r;
+    buffer[i + 1] = g;
+    buffer[i + 2] = b;
+    buffer[i + 3] = a;
   }
   return buffer;
 }
@@ -323,7 +353,7 @@ function createTextChunk(grid: Grid): Uint8Array {
 }
 
 function getStateString(grid: Grid): string {
-  const { cells, ...serializable } = grid;
+  const { cells, cache, ...serializable } = grid;
   return JSON.stringify(serializable);
 }
 
@@ -361,3 +391,4 @@ function parsePhaseRange(
 }
 
 main();
+

@@ -3,32 +3,53 @@ export type RGB = [number, number, number];
 export type PaletteData = typeof palettes;
 export type PaletteName = keyof PaletteData;
 export const Themes = Object.keys(palettes) as PaletteName[];
+export function isPaletteName(name: string): name is PaletteName {
+  return Object.hasOwn(palettes, name);
+}
 
 export class ColorMap {
   /** The current theme as a Uint8ClampedArray lookup table for performance */
-  static lookup: Uint8ClampedArray = new Uint8ClampedArray(256 * 4);
+  lookup: Uint8ClampedArray = new Uint8ClampedArray(256 * 4);
+  theme: string;
+  constructor(theme: PaletteName = "turbo") {
+    this.load(theme);
+    this.theme = theme;
+  }
+
+  load(theme: PaletteName) {
+    this.theme = theme;
+    const data = palettes[theme];
+    if (!data) throw "Invalid Theme";
+    for (let i = 0; i < 256; i++) {
+      const src = data[Math.round((i / 255) * (data.length - 1))];
+      this.lookup[i * 4] = src[0];
+      this.lookup[i * 4 + 1] = src[1];
+      this.lookup[i * 4 + 2] = src[2];
+      this.lookup[i * 4 + 3] = 255;
+    }
+  }
 
   /**
    * Receives a value from 0 to 1 and outputs RGBA values according to current
    * theme lookup tables
    */
-  static getRGBA(value: number): [number, number, number, number] {
+  getRGBA(value: number): [number, number, number, number] {
     const o = ((value * 255) | 0) * 4;
     return [
-      ColorMap.lookup[o],
-      ColorMap.lookup[o + 1],
-      ColorMap.lookup[o + 2],
-      ColorMap.lookup[o + 3],
+      this.lookup[o],
+      this.lookup[o + 1],
+      this.lookup[o + 2],
+      this.lookup[o + 3],
     ];
   }
 
-  static fromRGBA(
-    fn: (value: number) => [number, number, number, number],
+  fromRGBA(
     r: number,
     g: number,
     b: number,
     a: number,
   ): number {
+    const fn = this.getRGBA.bind(this);
     const K = 64;
     let bestK = 0;
     let bestD = Infinity;
@@ -85,26 +106,9 @@ export class ColorMap {
     }
     return (lo + hi) / 2;
   }
-
-  static createReverseLookup() {
-  }
-
-  static load(theme: PaletteName) {
-    const data = palettes[theme];
-    if (!data) throw "Invalid Theme";
-    for (let i = 0; i < 256; i++) {
-      const src = data[Math.round((i / 255) * (data.length - 1))];
-      ColorMap.lookup[i * 4] = src[0];
-      ColorMap.lookup[i * 4 + 1] = src[1];
-      ColorMap.lookup[i * 4 + 2] = src[2];
-      ColorMap.lookup[i * 4 + 3] = 255;
-    }
-  }
 }
 
 function randomTheme(): PaletteName {
   const names = Object.keys(palettes) as PaletteName[];
   return names[Math.floor(Math.random() * names.length)];
 }
-//ColorMap.load(randomTheme());
-ColorMap.load("turbo");

@@ -1,4 +1,44 @@
-# Wed Apr 29 13:16:34 EDT 2026
+# Fri May  1 11:42:28 AM EDT 2026
+Finished a fair amount of cleanup and standardization work. Settling on rule specification based on
+larger than life. Fixed global color map singleton. moved to a cell grid with buffered edges and
+between tick copying for edge wrapping. made randomization use a seeded prng for determinism.
+
+## Next Steps
+I need to start making better methods for explroing the parameter space. I'm ignoring the activation
+function for now since LtL rules are actually giving interesting behaviour, but they have 4 
+parameters to explore. I'm thinking I'm going to adapt my phase diagram approach to 2 of those 
+parameters, then grid search.
+
+I'm also starting to hit performance issues as I want to try larger neighborhoods. I may need to
+optimize the PMF calculation. The obvious thing to me would be to compute each cells PMF using the
+last cells PMF as a base. PMF = PMF(previous cell) - PMF(notInNeighborhood) + PMF(notInPreviousPMF).
+Before I do that I need to do some reading and thinking. I've been thinking about rules at the cell
+level - it feels like there should be a more efficient global way to do it. It's probably pretty
+convoluted though. Shaders are the other obvious path, but I don't really intend to get those done
+until it's basically done. Want that as a test case of AI agentic dev against a test framework.
+
+## Priorites 
+ - Phase diagram for the LtL rules
+
+# Thu Apr 30 10:56:00 AM EDT 2026
+Need to start collecting and reviewing sources so I can compare my implementation. 
+https://arxiv.org/pdf/1111.1567
+
+Also need to decide on the kernel / neighborhood problem
+
+1. I want to keep paramters minimal so search space is easier. Parameters shouldn't be redundant
+2. I'm tempted to add a kernel. currently, all cells in the neighorhood contribute equally to the
+next state. A kernel like in lenia would give the flexibility to treat distant cells with lower 
+weights. The current neighborhood would just be a special case of a the kernel
+
+I don't really like the kernels because they add complexity and a means to specify shapes and
+behavriour rather than discovering it. When you know about the ring kernel in lenia, the gliders
+look a lot less special. In general I don't like the larger neighborhoods. The cool bits of
+automata are locality, having a speed-of-causality, and macroscopic emergent behaviour. Large
+neighborhoods make individual cells look cooler to the eye, but massively increase the 
+speed-of-causality across the grid.
+
+The larger the grid, as measured by speed-of-causality, the more interesting. 
 
 ## Priorities
  - Cleanup `core.ts` now that algorithm is settled

@@ -1,4 +1,45 @@
 import type { Grid } from "../core.ts";
+export interface Rule {
+  (state: number, pmf: number[]): number;
+}
+
+export const Rules = {
+  /**
+   * Larger than life ruels where
+   * sMin - minimal # of living cells for a state 1 cell to survive
+   * sMax - maximum # of living cells before a state 1 cell dies
+   * bMin - minimum # of living cells for a dead cell to birth
+   * bMax - maximum # of living cells for a dead cell to birth
+   *
+   * state is a [0-1] value representing odds this cell is alive
+   * return value is the probability this cell is state 1, given the PMF
+   */
+  largerThanLife: (
+    [sMin, sMax]: [number, number],
+    [bMin, bMax]: [number, number],
+    middle: number, // 0 or 1, if the middle is included or not
+    state: number,
+    pmf: number[],
+  ) => {
+    // If the middle is included, we don't need to check our state, just overall neighborhood
+    if (middle) {
+      let total = 0;
+      for (let i = 0; i < pmf.length; i++) {
+        if ((i >= bMin && i <= bMax) || (i >= sMin && i <= sMax)) {
+          total += pmf[i];
+        }
+      }
+      return total;
+    } else {
+      let birth = 0;
+      for (let i = bMin; i <= bMax; i++) birth += pmf[i];
+
+      let survive = 0;
+      for (let i = sMin; i <= sMax; i++) survive += pmf[i];
+      return (1 - state) * birth + state * survive;
+    }
+  },
+};
 
 export const NAMED_RULES = {
   conway: (grid: Grid, position: number, odds: number[]) => {
@@ -9,29 +50,6 @@ export const NAMED_RULES = {
       (grid.cells[position] * (odds[2] + odds[3]))
     );
   },
-  ltl: (grid: Grid, position: number, odds: number[]) => {
-    // LtL thresholds. Conway's Life equivalent: B=[3,3], S=[2,3].
-		const [bmin, bmax] = [23, 30]; // birth range, circular R=5
-		const [smin, smax] = [23, 39]; // survival range, circular R=5
-
-    // Sum the probability of the count falling in the birth range [bmin, bmax]
-    // and in the survival range [smin, smax]. Ranges are inclusive.
-    let birthProb = 0;
-    let surviveProb = 0;
-    const maxK = odds.length - 1;
-    const bHi = Math.min(bmax, maxK);
-    const sHi = Math.min(smax, maxK);
-    for (let k = bmin; k <= bHi; k++) birthProb += odds[k];
-    for (let k = smin; k <= sHi; k++) surviveProb += odds[k];
-
-    return (
-      // Odds of a dead cell becoming alive (count lands in birth range)
-      (1 - grid.cells[position]) * birthProb +
-      // Odds of a living cell surviving (count lands in survival range)
-      grid.cells[position] * surviveProb
-    );
-  },
-
   // Day/Night B3678/S34678
   dayNight: (grid: Grid, position: number, odds: number[]) => {
     return (
@@ -60,25 +78,24 @@ export const NAMED_RULES = {
       (grid.cells[position]) * (odds[3] + odds[5] + odds[6] + odds[7] + odds[8])
     );
   },
-  interpolated: (grid: Grid, position: number, odds: number[], a: number, b: number) => {
-    const rules = [
-      { w: a, b: [0, 0, 0, 1, 0, 0, 0, 0, 0], s: [0, 0, 1, 1, 0, 0, 0, 0, 0] }, // Conway
-      { w: b, b: [0, 0, 0, 1, 0, 1, 1, 1, 1], s: [0, 0, 0, 0, 0, 1, 1, 1, 1] }, // Diamoeba
-      { w: a * b, b: [0, 0, 0, 1, 0, 0, 1, 1, 1], s: [0, 0, 0, 1, 1, 0, 1, 1, 1] }, // Day & Night
-      { w: (1 - a) * (1 - b), b: [0, 0, 0, 1, 0, 0, 1, 0, 0], s: [0, 0, 1, 1, 0, 0, 0, 0, 0] }, // HighLife
-      { w: (1 - a) * b, b: [0, 0, 1, 0, 0, 0, 0, 0, 0], s: [0, 0, 0, 0, 0, 0, 0, 0, 0] }, // Seeds
-    ];
+  // Larger-than-Life Conway. Bosco's rule scaled to any neighborhood size.
+  // At range 5 / Moore (120 neighbors) this is exactly Bosco's: B34-45/S33-57.
+  // Thresholds are stored as Bosco fractions and re-scaled to the actual
+  // neighbor count, so the rule works for any radius / shape.
+  largerThanLifeConway: (grid: Grid, position: number, odds: number[]) => {
+    const totalNeighbors = odds.length - 1;
+    const birthMin = Math.round(totalNeighbors * 34 / 120);
+    const birthMax = Math.round(totalNeighbors * 45 / 120);
+    const survivalMin = Math.round(totalNeighbors * 33 / 120);
+    const survivalMax = Math.round(totalNeighbors * 57 / 120);
 
-    const total = rules.reduce((acc, r) => acc + r.w, 0);
+    let birth = 0;
+    for (let k = birthMin; k <= birthMax; k++) birth += odds[k];
 
-    let pBirth = 0, pSurvive = 0;
-    for (let k = 0; k < 9; k++) {
-      for (const r of rules) {
-        pBirth += odds[k] * r.b[k] * r.w / total;
-        pSurvive += odds[k] * r.s[k] * r.w / total;
-      }
-    }
+    let survival = 0;
+    for (let k = survivalMin; k <= survivalMax; k++) survival += odds[k];
 
-    return (1 - grid.cells[position]) * pBirth + grid.cells[position] * pSurvive;
+    return (1 - grid.cells[position]) * birth +
+      grid.cells[position] * survival;
   },
 };

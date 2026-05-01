@@ -46,14 +46,13 @@ export class ColorScale extends HTMLElement {
   connectedCallback() {
     this.shadow = this.attachShadow({ mode: "open" });
     this.shadow.innerHTML = HTML;
-    this.render();
   }
 
-  render() {
+  render(colorMap: ColorMap) {
     const ctx = this.getCtx();
     ctx.canvas.width = 4096;
     ctx.canvas.height = 1;
-    const imageData = ColorScale.createImageData(4096);
+    const imageData = ColorScale.createImageData(colorMap, 4096);
     ctx.putImageData(imageData, 0, 0);
   }
 
@@ -69,13 +68,13 @@ export class ColorScale extends HTMLElement {
    * Use the same method as the automata rendere to get a gradient bar
    * image
    */
-  static createImageData(width: number) {
+  static createImageData(colorMap: ColorMap, width: number) {
     const imgDataArray = new Uint8ClampedArray(width * 4);
     const imageData = new ImageData(imgDataArray, width, 1);
 
     for (let i = 0; i <= width; i++) {
       const value = i / width;
-      const [r, g, b, a] = ColorMap.getRGBA(value);
+      const [r, g, b, a] = colorMap.getRGBA(value);
       imgDataArray[i * 4] = r;
       imgDataArray[i * 4 + 1] = g;
       imgDataArray[i * 4 + 2] = b;

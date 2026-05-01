@@ -1,9 +1,10 @@
-type Shape = "moore" | "vonNeumann" | "circular";
-import { NAMED_RULES } from "./lib/rules.ts";
-import { ShaperName, Shapers } from "./shapers.ts";
-// ColorMap is a global singleton that contains the current theme.
-import { ColorMap, PaletteName, Themes } from "./lib/ColorMap.ts";
-
+/**
+ * @TODO - Standardize NAMED_RULES structure
+ */
+import { NAMED_RULES, Rule, Rules } from "./lib/rules.ts";
+import { isShaperName, ShaperName, Shapers } from "./shapers.ts";
+import { PaletteName, Themes } from "./lib/ColorMap.ts";
+const Random = splitmix32(2567452050);
 /**
  * Contains core logic behind the automata, seperated from any interface that controls it
  * no reliance on DOM, could be turned into terminal utility.
@@ -17,6 +18,12 @@ export interface Grid {
   mode: "PhaseDiagram" | "Fixed";
   width: number;
   height: number;
+  // A string encoding of a rule to follow. e.g r1s2-3b3-3nm would mean
+  // r1s2-3b3-3nm
+  // radius 1, survive at 2-3 living neighbors, birth at 3-3 neighbors. Which is Conways
+  rule: string;
+  neighborhoodShape: "moore" | "disc";
+  neighborhoodSize: number;
   cells: Float64Array;
 
   /** properties for shaping probability */
@@ -37,11 +44,27 @@ export interface Grid {
     beta: [number, number];
   };
 
-  /** The activation function to use. i.e. gaussian or power transform */
-  activation: ShaperName;
+  /** The activation function to use. i.e. gaussian or sin */
+  activation: ShaperName | "none";
 
   playing: boolean;
   theme: PaletteName;
+
+  /**
+   * Values that are pure functions of other grid properties. used for performance reasons. never
+   * serialized.
+   */
+  cache: Cache;
+}
+
+/**
+ * Pre-computed values for performance reasons, such as the array of offsets that represent the
+ * neighborhood
+ */
+interface Cache {
+  neighborhood: number[];
+  includeMiddle: boolean;
+  rule: Rule;
 }
 
 export class LifeLike {
@@ -59,6 +82,11 @@ export class LifeLike {
     const grid: Grid = {
       width: initial.width ? initial.width : 100,
       height: initial.height ? initial.height : 100,
+      //R5,C0,M1,S34..58,B34..45,NM
+      rule: "r5m1s34-58b34-45m",
+      //rule: "r1m1s34-58b34-45m",
+      neighborhoodShape: "moore",
+      neighborhoodSize: 4,
       cells: new Float64Array(),
       mode: "PhaseDiagram",
       // New bytes are initialized to 0
@@ -66,20 +94,77 @@ export class LifeLike {
       alpha: 1,
       beta: .5,
       changeRate: 1,
-      activation: "gaussian",
-      phaseDiagram: Shapers["gaussian"].diagram,
+      activation: "none",
+      phaseDiagram: Shapers["none"].diagram,
       theme: "viridis",
+      cache: {
+        neighborhood: [],
+        includeMiddle: false,
+        rule: () => 0,
+      },
     };
     Object.assign(grid, initial);
     /**
      * If the initial grid didn't specify its cells or phase diagram, update it
      * based on what is specified.
      */
-    if (!initial.cells) grid.cells = new Float64Array(8 * grid.width * grid.height);
+    if (!initial.cells) grid.cells = LifeLike.createBufferedArray(grid);
     if (!initial.phaseDiagram) grid.phaseDiagram = Shapers[grid.activation].diagram;
 
-    ColorMap.load(grid.theme);
+    LifeLike.updateGridCache(grid);
     return grid;
+  }
+
+  static updateGridCache(grid: Grid) {
+    const { middle, radius, sRange, bRange, neighborhood } = LifeLike.parseRuleString(
+      grid.rule,
+    );
+    grid.neighborhoodShape = neighborhood;
+    grid.neighborhoodSize = radius;
+    grid.cache.includeMiddle = !!middle;
+    grid.cache.neighborhood = LifeLike.createNeighborhoodStencil(grid);
+    grid.cache.rule = Rules.largerThanLife.bind(null, sRange, bRange, middle);
+  }
+
+  /**
+   * Parses the rule string into fixed paramters
+   * rule string in format: r5m0s23-30b10-15nd
+   */
+  static parseRuleString(rule: string): {
+    radius: number;
+    middle: number;
+    sRange: [number, number];
+    bRange: [number, number];
+    neighborhood: "moore" | "disc";
+  } {
+    rule = rule.toLowerCase();
+    const match = rule.match(/^r(\d+)m(\d)s(\d+)-(\d+)b(\d+)-(\d+)([a-z])$/);
+    if (!match) throw "Failed to parse rule string\n" + rule;
+    const [, r, m, sMin, sMax, bMin, bMax, n] = match;
+
+    const radius = Number(r);
+    const middle = Number(m);
+    const sRange: [number, number] = [Number(sMin), Number(sMax)];
+    const bRange: [number, number] = [Number(bMin), Number(bMax)];
+    sRange.sort();
+    bRange.sort();
+
+    switch (n) {
+      case "m":
+        return { sRange, bRange, radius, middle, neighborhood: "moore" };
+      case "d":
+        return { sRange, bRange, radius, middle, neighborhood: "disc" };
+    }
+    throw "Invalid neighborhood type";
+  }
+
+  /**
+   * Creates a float array with a buffer of cells around it equal to the neighborhood radius.
+   */
+  static createBufferedArray(grid: Grid): Float64Array {
+    const size = (grid.width + (2 * grid.neighborhoodSize)) *
+      (grid.height + (2 * grid.neighborhoodSize));
+    return new Float64Array(size);
   }
   /**
    * This function is intended to expose grid operations that can be
@@ -99,64 +184,125 @@ export class LifeLike {
    * Compute the next state of the grid
    */
   static getNextState(grid: Grid): Float64Array {
-    const wrap = grid.mode === "Fixed";
     /** Create a new 1D array of 8 bit floats that represent grid state */
-    const nextState = new Float64Array(new ArrayBuffer(8 * grid.width * grid.height));
+    //const nextState = new Float64Array(new ArrayBuffer(8 * grid.width * grid.height));
+    const nextState = LifeLike.createBufferedArray(grid);
 
-    for (let position = 0; position < grid.cells.length; position++) {
-      let state = 0; // State is iteretively modified by rules & activation function
-      // Sort is needed for determinism since floating point arithmatic is not associative
-      //const neighbors = LifeLike.getNeighborhood(position, grid, wrap).sort();
-      const neighbors = LifeLike.getLargerNeighborhood(position, grid, 5).sort();
+    for (const [position, x, y] of LifeLike.cellIterator(grid)) {
+      // Initialize a state value, which will be iteretively modifed
+      let state = 0;
 
-      // Comput PMF, result is an array wher pmf[i] = odds of i living neighbors
+      // Get the values for all neighbors, sort is need to account for floating point
+      // indeterminism arising from order of operations
+      const neighbors = LifeLike.getNeighborhood(position, grid).sort();
+
+      // Compute PMF, result is an array wher pmf[i] = odds of i living neighbors
       const odds = LifeLike.computeNeighborTotalOddsDC(neighbors);
 
-      // Apply rules to PMF
-      //state = NAMED_RULES.conway(grid, position, odds);
-      state = NAMED_RULES.ltl(grid, position, odds);
-      // Get the activation function and alpha/beta params
-      const [alpha, beta] = LifeLike.getAlphaBeta(grid, position);
+      // Apply the automata rule
+      //state = Rules.largerThanLife([10, 18], [14, 18], grid.cells[position], odds);
+      state = grid.cache.rule(grid.cells[position], odds);
+
+      // Apply the activation function
       const activation = Shapers[grid.activation].fn;
-
-      // apply the activation function
+      const [alpha, beta] = LifeLike.getAlphaBeta(grid, x, y);
       state = activation(state, alpha, beta);
-      // smooth the time step
-      state = grid.cells[position] + ((state - grid.cells[position]) / grid.changeRate);
-      nextState[position] = isNaN(state) ? 0 : state;
 
-      // Set next state value
-      /** @TODO
-       * This was a hacky test of seeing interpolating between life-like rules. it actually works
-       * and produces output without the need for an activation function. Worth refactoring at
-       * some point to do a better job of exploring the compbinations
-      if (grid.mode === "Fixed") {
-        const a = grid.alpha;
-        const b = grid.beta;
-        state = (a * NAMED_RULES.diomoeba(grid, position, odds) +
-          b * NAMED_RULES.anneal(grid, position, odds)) / (a + b);
-      } else {
-        const x = position % grid.width + 1;
-        const y = (position - x) / grid.width;
-        const [minA, maxA] = grid.phaseDiagram.alpha;
-        const [minB, maxB] = grid.phaseDiagram.beta;
-        const a = LifeLike.linearInterpolate(grid.width, x, minA, maxA);
-        const b = LifeLike.linearInterpolate(grid.height, y, minB, maxB);
-        state = (a * NAMED_RULES.diomoeba(grid, position, odds) +
-          b * NAMED_RULES.anneal(grid, position, odds)) / (a + b);
-      }
-       */
+      // Apply the time-step smoothing
+      state = grid.cells[position] + ((state - grid.cells[position]) / grid.changeRate);
+
+      nextState[position] = isNaN(state) ? 0 : state;
     }
 
+    // For wrapping edges to the other side of the grid
+    LifeLike.copyBufferedEdges(nextState, grid.width, grid.height, grid.neighborhoodSize);
     return nextState;
   }
 
-  static getAlphaBeta(grid: Grid, position: number): [number, number] {
+  /**
+   * Copy the cell state from the edges to the opposing sides buffer area to make simulation
+   * act as if things were flowing across the edges
+   */
+  static copyBufferedEdges(
+    cells: Float64Array,
+    width: number,
+    height: number,
+    radius: number,
+  ) {
+    const r = radius;
+    const stride = width + 2 * r;
+
+    // Horizontal: each inner row's left/right r cells wrap to the opposite buffer.
+    for (let y = r; y < r + height; y++) {
+      const row = y * stride;
+      for (let i = 0; i < r; i++) {
+        cells[row + i] = cells[row + width + i]; // left  buf <- inner right edge
+        cells[row + r + width + i] = cells[row + r + i]; // right buf <- inner left edge
+      }
+    }
+
+    // Vertical: copy whole rows (incl. side buffers from pass 1) to top/bottom
+    // buffer rows. Corner regions are populated transitively.
+    for (let i = 0; i < r; i++) {
+      const topBufRow = i * stride; // y = i
+      const bottomInner = (height + i) * stride; // inner y = height - r + i
+      const bottomBufRow = (r + height + i) * stride; // y = r + height + i
+      const topInner = (r + i) * stride; // inner y = i
+      cells.copyWithin(topBufRow, bottomInner, bottomInner + stride);
+      cells.copyWithin(bottomBufRow, topInner, topInner + stride);
+    }
+  }
+
+  /**
+   * Calculates static offsets so that when iterated
+   * grid.cells[position + offsets[i]]
+   * yields the full neighborhood. Center position is excluded.
+   *
+   * Shape:
+   *   "disc"  - Based on distance from center
+   *   "moore" — Square of 2r+1 centered on position. 1 === moore neighborhood
+   */
+  static createNeighborhoodStencil(
+    grid: Grid,
+  ): number[] {
+    const radius = grid.neighborhoodSize;
+    const radiusSquared = radius * radius;
+    const physWidth = grid.width + 2 * grid.neighborhoodSize;
+    const offsets: number[] = [];
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        // Skip the center position
+        if (!grid.cache.includeMiddle && dx === 0 && dy === 0) continue;
+        // If a disc, skip the parts of the suare that are outside the disc
+        if (grid.neighborhoodShape === "disc" && dx * dx + dy * dy > radiusSquared) continue;
+        // set the offset accounting for the buffer area at the edge of the grid
+        offsets.push(dy * physWidth + dx);
+      }
+    }
+    return offsets;
+  }
+
+  /**
+   * Use the cached neighborhood stencil that contains position offsets to load the cells
+   * neighborhood
+   */
+  static getNeighborhood(
+    position: number,
+    grid: Grid,
+  ): number[] {
+    const cells: number[] = [];
+    for (const offset of grid.cache.neighborhood) cells.push(grid.cells[position + offset]);
+    return cells;
+  }
+
+  /**
+   * Gets the alpha and beta parameters based on either to global grid configuration or the
+   * interpolated values if in phase diagram mode
+   */
+  static getAlphaBeta(grid: Grid, x: number, y: number): [number, number] {
     if (grid.mode === "Fixed") {
       return [grid.alpha, grid.beta];
     } else {
-      const x = position % grid.width + 1;
-      const y = (position - x) / grid.width;
       const [minA, maxA] = grid.phaseDiagram.alpha;
       const [minB, maxB] = grid.phaseDiagram.beta;
       const a = LifeLike.linearInterpolate(grid.width, x, minA, maxA);
@@ -167,117 +313,6 @@ export class LifeLike {
 
   static linearInterpolate(size: number, i: number, min: number, max: number): number {
     return min + (max - min) * (i / size);
-  }
-
-  /**
-   * Get's the neighborhood for the cell at specified position. If the position is on the edge of
-   * the grid, it's neighbor is the opposite edge.
-   * @TODO: optimize
-   */
-  static getNeighborhood(position: number, grid: Grid, wrap = true): number[] {
-    const x = position % grid.width;
-    const y = (position - x) / grid.width;
-    // return value is a lenght 8 array
-    // 0 1 2
-    // 3 C 4
-    // 5 6 7
-    //const neighbors = new Int16Array(8);
-    const neighbors = [];
-
-    // return value of neighbors
-    const n = new Array(8);
-    /** Set the position for each neighor */
-    neighbors[0] = position - grid.width - 1;
-    neighbors[1] = position - grid.width;
-    neighbors[2] = position - grid.width + 1;
-    neighbors[3] = position - 1;
-    neighbors[4] = position + 1;
-    neighbors[5] = position + grid.width - 1;
-    neighbors[6] = position + grid.width;
-    neighbors[7] = position + grid.width + 1;
-
-    // Will read garbage on edge cases, but gets reset to correct value below
-
-    if (wrap) {
-      /**
-       * By default, wrap to the other side of the grid when reaching an edge
-       */
-      if (position < grid.width) {
-        // Position is on top side
-        neighbors[0] += grid.cells.length;
-        neighbors[1] += grid.cells.length;
-        neighbors[2] += grid.cells.length;
-      } else if (position >= grid.width * (grid.height - 1)) {
-        //position is on bottom side
-        neighbors[5] -= grid.cells.length;
-        neighbors[6] -= grid.cells.length;
-        neighbors[7] -= grid.cells.length;
-      }
-
-      if (position % grid.width === 0) {
-        // Position is left side
-        neighbors[0] += grid.width;
-        neighbors[3] += grid.width;
-        neighbors[5] += grid.width;
-      } else if ((position + 1) % grid.width === 0) {
-        // Position is right side
-        neighbors[2] -= grid.width;
-        neighbors[4] -= grid.width;
-        neighbors[7] -= grid.width;
-      }
-      for (let i = 0; i < neighbors.length; i++) n[i] = grid.cells[neighbors[i]];
-    } else {
-      for (let i = 0; i < neighbors.length; i++) n[i] = grid.cells[neighbors[i]];
-      /**
-       * If wrap is false, then treat the edges as dead cells.
-       */
-      if (y === 0) n[0] = n[1] = n[2] = 0;
-      if (y === grid.height - 1) n[5] = n[6] = n[7] = 0;
-      if (x === 0) n[0] = n[3] = n[5] = 0;
-      if (x === grid.width - 1) n[2] = n[4] = n[7] = 0;
-    }
-    return n;
-  }
-
-  static getLargerNeighborhood(
-    position: number,
-    grid: Grid,
-    R: number,
-    shape: Shape = "circular",
-  ): number[] {
-    const x = position % grid.width;
-    const y = (position - x) / grid.width;
-    const neighbors: number[] = [];
-
-    for (let dy = -R; dy <= R; dy++) {
-      for (let dx = -R; dx <= R; dx++) {
-        if (dx === 0 && dy === 0) continue; // exclude center
-
-        // Shape mask — pick which cells count as "in the neighborhood"
-        let inShape: boolean;
-        switch (shape) {
-          case "moore":
-            inShape = true;
-            break; // full square
-          case "vonNeumann":
-            inShape = Math.abs(dx) + Math.abs(dy) <= R;
-            break; // diamond
-          case "circular":
-            inShape = dx * dx + dy * dy <= R * R;
-            break; // disc
-        }
-        if (!inShape) continue;
-
-        const nx = x + dx;
-        const ny = y + dy;
-        neighbors.push(
-          nx < 0 || nx >= grid.width || ny < 0 || ny >= grid.height
-            ? 0
-            : grid.cells[ny * grid.width + nx],
-        );
-      }
-    }
-    return neighbors;
   }
 
   /**
@@ -364,6 +399,45 @@ export class LifeLike {
     n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
     return ((n + (n >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
   }
+
+  /**
+   * Returns an iterator over the inner portion of the cell array that gets simulated.
+   */
+  static *cellIterator(
+    grid: Grid,
+  ): Generator<[position: number, x: number, y: number]> {
+    const r = grid.neighborhoodSize;
+    const physWidth = grid.width + 2 * r;
+    for (let y = 0; y < grid.height; y++) {
+      const rowStart = (y + r) * physWidth + r;
+      for (let x = 0; x < grid.width; x++) {
+        yield [rowStart + x, x, y];
+      }
+    }
+  }
+}
+/**
+ * Seeded random number generator. Should have better randomness than mulberry32, don't care about
+ * performance but also don't want to seed more like sfc32.
+ *
+ * Comparison of various PRNG from PractRand
+ * https://github.com/bryc/code/blob/master/jshash/PRNGs.md
+ *
+ * > This mixing function has been studied quite heavily, and improved constants have been found.
+ * > This is the best one found so far:
+ *
+ * s is coerced into a 32 bit int by bitwise/imul ops
+ */
+function splitmix32(a: number) {
+  return function () {
+    a |= 0;
+    a = a + 0x9e3779b9 | 0;
+    var t = a ^ a >>> 16;
+    t = Math.imul(t, 0x21f0aaad);
+    t = t ^ t >>> 15;
+    t = Math.imul(t, 0x735a2d97);
+    return ((t = t ^ t >>> 15) >>> 0) / 4294967296;
+  };
 }
 
 type Control = (grid: Grid, args: any) => void;
@@ -386,15 +460,15 @@ const Controls = {
    */
   "reset-random"(grid) {
     const densityRange = [0, 1];
-    const valueRange = [0, .5];
+    const valueRange = [0, 1];
 
-    for (let position = 0; position < grid.cells.length; position++) {
-      const x = position % grid.width;
-      const y = (position - x) / grid.width;
+    grid.cells = LifeLike.createBufferedArray(grid);
+    for (const [position, x, y] of LifeLike.cellIterator(grid)) {
       const density = LifeLike.linearInterpolate(grid.width, x, densityRange[0], densityRange[1]);
       const min = LifeLike.linearInterpolate(grid.height, y, valueRange[0], valueRange[1]);
-      if (Math.random() > density) {
-        grid.cells[position] = Math.random() * (1 - min) + min;
+
+      if (Random() > density) {
+        grid.cells[position] = Random() * (1 - min) + min;
       } else {
         grid.cells[position] = 0;
       }
@@ -405,19 +479,22 @@ const Controls = {
    * patterns
    */
   "make-symmetric"(grid) {
-    const newCells = new Float64Array(new ArrayBuffer(8 * grid.width * grid.height));
+    const newCells = LifeLike.createBufferedArray(grid);
+    const bufferedWidth = grid.width + 2 * grid.neighborhoodSize;
+    const bufferedHeight = grid.height + 2 * grid.neighborhoodSize;
+
     for (let position = 0; position < grid.cells.length; position++) {
-      const x = position % grid.width;
-      const y = (position - x) / grid.width;
+      const x = position % bufferedWidth;
+      const y = (position - x) / bufferedWidth;
       //** This is top left quadrant, which gets mirrored to other quadrants */
-      if (x < grid.width / 2 && y < grid.height / 2) {
-        const xOffset = grid.width - (2 * x) - 1;
-        const yOffset = (grid.height - 1) - (2 * y);
+      if (x < bufferedWidth / 2 && y < bufferedHeight / 2) {
+        const xOffset = bufferedWidth - (2 * x) - 1;
+        const yOffset = (bufferedHeight - 1) - (2 * y);
 
         newCells[position] = grid.cells[position];
         newCells[position + xOffset] = grid.cells[position];
-        newCells[position + xOffset + yOffset * grid.width] = grid.cells[position];
-        newCells[position + yOffset * grid.width] = grid.cells[position];
+        newCells[position + xOffset + yOffset * bufferedWidth] = grid.cells[position];
+        newCells[position + yOffset * bufferedWidth] = grid.cells[position];
       }
     }
     grid.cells = newCells;
@@ -426,7 +503,8 @@ const Controls = {
    * 0s out the entire grid
    */
   "reset"(grid) {
-    grid.cells = new Float64Array(new ArrayBuffer(8 * grid.width * grid.height));
+    grid.cells = LifeLike.createBufferedArray(grid);
+    LifeLike.updateGridCache(grid);
   },
 
   "load-state"(grid, state: Partial<Grid>) {
@@ -512,8 +590,8 @@ const Controls = {
    * Activation function controls
    */
   "set-activation"(grid, name: string) {
-    if (name in Shapers) {
-      grid.activation = name as ShaperName;
+    if (isShaperName(name)) {
+      grid.activation = name;
     }
   },
   "next-activation"(grid) {
@@ -529,12 +607,10 @@ const Controls = {
   "next-theme"(grid) {
     const i = Themes.indexOf(grid.theme);
     grid.theme = Themes[(i + 1) % Themes.length];
-    ColorMap.load(grid.theme);
   },
   "prev-theme"(grid) {
     const i = Themes.indexOf(grid.theme);
     grid.theme = Themes[(i - 1 + Themes.length) % Themes.length];
-    ColorMap.load(grid.theme);
   },
   "increase-rate"(grid) {
     grid.changeRate += 1;
@@ -556,7 +632,7 @@ const Controls = {
     grid.playing = !grid.playing;
   },
   "debug"(grid) {
-    console.log(JSON.stringify(grid.phaseDiagram));
+    console.log(grid);
   },
 } satisfies Record<string, Control>;
 type ControlName = keyof typeof Controls;

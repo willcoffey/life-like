@@ -6,7 +6,11 @@ export type Shaper = {
     beta: [number, number];
   };
 };
+export function isShaperName(name: string): name is ShaperName {
+  return Object.hasOwn(Shapers, name);
+}
 export const Shapers = {
+  "none": { fn: (state) => state, diagram: { alpha: [0, 0], beta: [0, 0] } },
   /**
    * Classic s shaped logistic curve.
    * Negative gamma flips orientation (decreasing instead of increasing).

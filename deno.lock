@@ -5,6 +5,7 @@
     "jsr:@std/internal@^1.0.12": "1.0.12",
     "npm:@types/node@^25.6.0": "25.6.0",
     "npm:pngjs@7": "7.0.0",
+    "npm:pngjs@7.0.0": "7.0.0",
     "npm:vite@^7.3.1": "7.3.2_@types+node@25.6.0_picomatch@4.0.4"
   },
   "jsr": {

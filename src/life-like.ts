@@ -16,6 +16,7 @@ class LifeLikeElement extends HTMLElement {
   component: LifeLike;
   container: HTMLElement | null = null;
   canvas: HTMLCanvasElement | null = null;
+  colorMap: ColorMap;
 
   stateDisplay: null | StateDisplay = null;
   colorScale: ColorScale | null = null;
@@ -32,6 +33,7 @@ class LifeLikeElement extends HTMLElement {
     });
     this.vlk = new KeyBinder();
     this.handleCommands();
+    this.colorMap = new ColorMap();
   }
 
   /**
@@ -95,21 +97,24 @@ class LifeLikeElement extends HTMLElement {
     const imgDataArray = new Uint8ClampedArray(grid.width * grid.height * 4);
     const imageData = new ImageData(imgDataArray, grid.width, grid.height);
 
-    for (let position = 0; position < grid.width * grid.height; position++) {
-      const [r, g, b, a] = ColorMap.getRGBA(grid.cells[position]);
-      imgDataArray[position * 4] = r;
-      imgDataArray[position * 4 + 1] = g;
-      imgDataArray[position * 4 + 2] = b;
-      imgDataArray[position * 4 + 3] = a;
+    for (const [position, x, y] of LifeLike.cellIterator(grid)) {
+      const [r, g, b, a] = this.colorMap.getRGBA(grid.cells[position]);
+      const i = (y * grid.width + x) * 4;
+      imgDataArray[i] = r;
+      imgDataArray[i + 1] = g;
+      imgDataArray[i + 2] = b;
+      imgDataArray[i + 3] = a;
     }
+
     if (canvas.width !== grid.width || canvas.height !== grid.height) {
       canvas.width = grid.width;
       canvas.height = grid.height;
     }
     context.putImageData(imageData, 0, 0);
 
+    if (grid.theme !== this.colorMap.theme) this.colorMap.load(grid.theme);
     this.stateDisplay?.render(grid);
-    this.colorScale?.render();
+    this.colorScale?.render(this.colorMap);
   }
 
   /**
