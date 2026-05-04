@@ -50,12 +50,18 @@ const HTML = `
     <button id="copy-json" type="button">copy json</button>
     <textarea id="paste-json" rows="1" placeholder="paste json state"></textarea>
   </div>
-  <div id="playing"></div>
+  <div id="mode"></div>
+  <div id="resolution"></div>
+  <div id="rule"></div>
   <div id="activation"></div>
-  <div id="alpha"></div>
-  <div id="beta"></div>
+  <div id="alphaBeta"></div>
+  <div id="cellCount"></div>
   <div id="changeRate"></div>
   <div id="theme"></div>
+  <div id="playing"></div>
+  <div id="phaseType"></div>
+  <div id="phaseX"></div>
+  <div id="phaseY"></div>
 </div>
 `;
 
@@ -106,21 +112,28 @@ export class StateDisplay extends HTMLElement {
     delete newGrid.cells;
     delete newGrid.cache;
 
-    const newString = JSON.stringify(newGrid);
+    const newString = JSON.stringify(newGrid) + `|n:${grid.cache.neighborhood.length}`;
     if (newString === this.lastState) return;
-    const keys: (keyof Grid)[] = ["playing", "activation", "alpha", "beta", "changeRate", "theme"];
     this.lastState = newString;
     this.lastGrid = newGrid;
-    for (const key of keys) {
-      const el = this.shadow?.getElementById(key);
-      if (!el) continue;
-      const value = newGrid[key];
-      if (typeof value === "number") {
-        if (el) el.innerHTML = `${key}: ${value.toFixed(2)}`;
-      } else {
-        if (el) el.innerHTML = `${key}: ${value}`;
-      }
-    }
+
+    const set = (id: string, text: string) => {
+      const el = this.shadow?.getElementById(id);
+      if (el) el.innerHTML = text;
+    };
+
+    set("mode", `mode: ${grid.mode}`);
+    set("resolution", `res: ${grid.width} × ${grid.height}`);
+    set("rule", `rule: ${grid.rule}`);
+    set("activation", `activation: ${grid.activation}`);
+    set("alphaBeta", `α/β: ${grid.alpha.toFixed(2)} / ${grid.beta.toFixed(2)}`);
+    set("cellCount", `cell count: ${grid.cache.neighborhood.length}`);
+    set("changeRate", `changeRate: ${grid.changeRate.toFixed(2)}`);
+    set("theme", `theme: ${grid.theme}`);
+    set("playing", `playing: ${grid.playing}`);
+    set("phaseType", `phase type: ${grid.phaseDiagram.type}`);
+    set("phaseX", `phase x: [${grid.phaseDiagram.x[0]}, ${grid.phaseDiagram.x[1]}]`);
+    set("phaseY", `phase y: [${grid.phaseDiagram.y[0]}, ${grid.phaseDiagram.y[1]}]`);
   }
 }
 
@@ -138,8 +151,8 @@ function toTerminalCommand(grid: GridState): string {
   if (grid.activation !== undefined) parts.push(`--activation=${grid.activation}`);
   if (grid.theme !== undefined) parts.push(`--theme=${grid.theme}`);
   if (grid.mode === "PhaseDiagram" && grid.phaseDiagram) {
-    const { alpha, beta } = grid.phaseDiagram;
-    parts.push(`--phase=${alpha[0]}:${alpha[1]},${beta[0]}:${beta[1]}`);
+    const { x, y } = grid.phaseDiagram;
+    parts.push(`--phase=${x[0]}:${x[1]},${y[0]}:${y[1]}`);
   }
   return parts.join(" ");
 }

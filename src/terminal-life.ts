@@ -56,6 +56,7 @@ Life-Like Terminal
 
 async function main() {
   const now = Date.now();
+  //@TODO - Does just true work to set everything?
   const opts = parseCommandLineOptions(Deno.args, {
     t: true,
     ticks: true,
@@ -75,8 +76,8 @@ async function main() {
     theme: true,
     rule: true,
   });
-
   if (opts.flags.h || opts.flags.help) return printHelp();
+
   const verbose = opts.flags.v ?? opts.flags.verbose;
   const inputGrid = parseGridFromArguments(opts);
 
@@ -95,10 +96,14 @@ async function main() {
   } else {
     /** Create a new grid with some random data */
     life = new LifeLike(inputGrid);
-    if(verbose) {
-      console.log(life.grid)
-      console.log("Total neighbor cells: " + life.grid.cache.neighborhood.length)
+    if (verbose) {
+      console.log(life.grid);
+      console.log("Total neighbor cells: " + life.grid.cache.neighborhood.length);
     }
+
+    //@TODO - temp
+    life.stdin({ command: "goto-start" });
+    life.stdin({ command: "reset-random" });
 
     /** If we are in fixed mode, seed with random data */
     if (!inputGrid.mode || inputGrid.mode === "Fixed") {
@@ -391,4 +396,3 @@ function parsePhaseRange(
 }
 
 main();
-

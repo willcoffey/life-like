@@ -5,6 +5,20 @@ export interface Rule {
 
 export const Rules = {
   /**
+   * Life-Like style rules where birth/survival values are enumerated explicitly
+   * i.e. not as a range but rather as B3/S012345678
+   */
+  lifeLike(survive: number[], birth: number[], state: number, pmf: number[]): number {
+    let b = 0;
+    let s = 0;
+    for (let i = 0; i < pmf.length; i++) {
+      b += pmf[i] * birth[i];
+      s += pmf[i] * survive[i];
+    }
+    return (1 - state) * b + state * s;
+  },
+
+  /**
    * Larger than life ruels where
    * sMin - minimal # of living cells for a state 1 cell to survive
    * sMax - maximum # of living cells before a state 1 cell dies
@@ -17,7 +31,7 @@ export const Rules = {
   largerThanLife: (
     [sMin, sMax]: [number, number],
     [bMin, bMax]: [number, number],
-    middle: number, // 0 or 1, if the middle is included or not
+    middle: boolean, // if true, middle cell is included in neighborhood
     state: number,
     pmf: number[],
   ) => {
@@ -31,11 +45,12 @@ export const Rules = {
       }
       return total;
     } else {
+      const max = pmf.length - 1;
       let birth = 0;
-      for (let i = bMin; i <= bMax; i++) birth += pmf[i];
+      for (let i = bMin; i <= Math.min(bMax, max); i++) birth += pmf[i];
 
       let survive = 0;
-      for (let i = sMin; i <= sMax; i++) survive += pmf[i];
+      for (let i = sMin; i <= Math.min(sMax, max); i++) survive += pmf[i];
       return (1 - state) * birth + state * survive;
     }
   },

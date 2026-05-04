@@ -190,6 +190,10 @@ class LifeLikeElement extends HTMLElement {
     vlk.bindKeys("<a>", "next-activation", "normal");
     vlk.bindKeys("<Shift-A>", "prev-activation", "normal");
 
+
+    vlk.bindKeys("<d>", "next-diagram", "normal");
+    vlk.bindKeys("<Shift-D>", "prev-diagram", "normal");
+
     vlk.bindKeys("<c>", "increase-rate", "normal");
     vlk.bindKeys("<Shift-C>", "decrease-rate", "normal");
 
@@ -208,7 +212,7 @@ class LifeLikeElement extends HTMLElement {
     vlk.bindKeys("< >", "play-pause", "normal");
     vlk.bindKeys("<.>", "tick", "normal");
 
-    vlk.bindKeys("<Shift-D>", "debug", "normal");
+    vlk.bindKeys("<Shift-L>", "debug", "normal");
   }
 
   /**

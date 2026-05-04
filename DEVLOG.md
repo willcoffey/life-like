@@ -1,7 +1,30 @@
+# Mon May  4 04:24:43 PM EDT 2026
+Too much hacking, cleaning and general coding without revisiting priorities.
+
+I added support for non-contigous life-like rules, and have brought focus back more to exporing the
+life-like variations vs the larger than life and activation function. I do want to also look 
+continous rules, i.e. a combination of arbitrarily many life-like rules simultaneously.
+
+I've added some TODO details, but I think right now the best path forward is to focus on the blog 
+post, and create tests for when I want pictures or demos in the post.
+
+
 # Fri May  1 11:42:28 AM EDT 2026
+phase range adapted to the ltl rules and it really works well. It's just hacked in currently but it
+is functional. I also realized just how fun it will be as a tool to explore classic life-like games
+as well. 
+
+I'm going to have to take another optimization pass. There is a lot of low hanging fruit without 
+needing to do anything too complicated. There is a lot that is complicated as well.
+
+
+
+---
+
 Finished a fair amount of cleanup and standardization work. Settling on rule specification based on
 larger than life. Fixed global color map singleton. moved to a cell grid with buffered edges and
 between tick copying for edge wrapping. made randomization use a seeded prng for determinism.
+
 
 ## Next Steps
 I need to start making better methods for explroing the parameter space. I'm ignoring the activation
@@ -18,7 +41,11 @@ convoluted though. Shaders are the other obvious path, but I don't really intend
 until it's basically done. Want that as a test case of AI agentic dev against a test framework.
 
 ## Priorites 
- - Phase diagram for the LtL rules
+ - Phase diagram for the LtL rules. Also need to update interpolation. should be min -> mid -> min
+so that edges have the same settings as the wraparound
+
+ - Need to move `neighborhoodSize` and `neighorhoodShape` to cache since they are pure functions of
+the rule string. Also worth considering neighborhood size as a phase diagram parameter.
 
 # Thu Apr 30 10:56:00 AM EDT 2026
 Need to start collecting and reviewing sources so I can compare my implementation. 
