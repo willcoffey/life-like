@@ -1,1 +1,12 @@
-{ "nodeModulesDir": "auto" }
+{
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "dev": "deno run -A npm:vite --host --port 3000",
+    "build": "deno run -A npm:vite build"
+  },
+  "imports": {
+    "vite": "npm:vite@^7.3.1",
+    "pngjs": "npm:pngjs@^7.0.0",
+    "vimlike-keybinder": "./vendor/vimlike-keybinder/src/index.ts"
+  }
+}

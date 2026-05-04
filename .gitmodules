@@ -1,0 +1,3 @@
+[submodule "vendor/vimlike-keybinder"]
+	path = vendor/vimlike-keybinder
+	url = git@github.com:willcoffey/vimlike-keybinder

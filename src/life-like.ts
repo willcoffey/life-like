@@ -1,7 +1,7 @@
 import html from "./life-like.html?raw";
 import "./lib/color-scale.ts";
 import { StateDisplay } from "./lib/state-display.ts";
-import { KeyBinder } from "vimlike-keybinder";
+import { KeyBinder } from "../vendor/vimlike-keybinder/keybinder.ts";
 import { Grid, LifeLike } from "./core.ts";
 import { ColorMap } from "./lib/ColorMap.ts";
 import { ColorScale } from "./lib/color-scale.ts";

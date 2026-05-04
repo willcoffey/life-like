@@ -1,39 +1,19 @@
-Good pattern
-.79, .31, .05
-1.88, .39, .05
+# Almost Life-Like - A Probabilistic extension of Conways Game of Life
+and other life-like automata
 
-pM: 0.75 pX: 0.16 pY: 0.11
-pM: 1.44 pX: 0.31 pY: 0.47
-pM: 0.80 pX: 0.07 pY: 0.49
-pM: 0.57 pX: 0.91 pY: 0.06
+## About
+This project is an exploration of extending life-like automata to continous states by interpreting
+state as a probability. This differs from Smoothlife and Lenia, which use essentially a convolution
+kernel and growth function.
 
-# Probabilistic version of Conways game of Life, and thoughts of other ideas of algo
+The state of each cell is treated as the odds of that cell being alive. The array of neighborhood 
+states is therefore is a poisson binomial, and we can compute a probability mass function for it. 
+This lets us apply standard life-like rules to the odds of each neighor state.
 
+There is a web interface for exploring patterns and rules, a terminal utility for generating and
+loading PNG images and a ffmpeg pipeline for creating `.webp` videos.
 
-- Rules 
-    Sum of probabilities doesn't change
-    
+A demo page can be found here @TODO
 
-# Thoughts
-Conways game of life is not reversible, I think you could do something clever for handling 
-"obeservations" where you can run the rules backwards to solve for them. Critters rule next target?
-
-
-With conways, whenever there is an observation will there be ugly non-local shudder as 
-other probabilities are adjusted. Assuming identity of source is maintained?
-
-How difficult will it be to get probabilities to not just dissapate into nothing
-
-
-observation would be changing the system, moving probabilities around.
-
-Could you engineer a way to have a cell get to 100% through rules?
-
-What are the implications of probabilities having identities. I.e. an observation can adjust
-an identities probability up and down, effecting everything it's interacted with.
-
-Can you get that type of behavior from reversibility? 
-
-What does over 100% probability mean, the probability has to be propagated out until when?
-    maybe rules can't create this, but can do something interesting if it's manually input
+## Installation
 
