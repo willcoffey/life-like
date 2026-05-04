@@ -16,4 +16,18 @@ loading PNG images and a ffmpeg pipeline for creating `.webp` videos.
 A demo page can be found here @TODO
 
 ## Installation
+The web app is a vanilla-web-component and is bundled with the repo. It can be
+viewed by opening [demo.html](./demo.html)
 
+
+This project uses [0][Deno] as a runtime.
+```
+git clone git@github.com:willcoffey/life-like
+git submodule update --init
+
+deno task 
+
+
+
+
+[0]: https://deno.com/
