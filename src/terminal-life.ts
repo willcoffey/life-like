@@ -1,4 +1,4 @@
-import { CommandLineOptions, parseCommandLineOptions } from "../../utilities/index.ts";
+import { CommandLineOptions, parseCommandLineOptions } from "./util.ts";
 import { isShaperName } from "./shapers.ts";
 import { Grid, LifeLike } from "./core.ts";
 import { ColorMap, isPaletteName, PaletteName } from "./lib/ColorMap.ts";
