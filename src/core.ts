@@ -14,7 +14,8 @@ const DIAGRAMS: DiagramType[] = ["birth", "survival", "activation"];
 const DEFAULT_GRID: Optional<Grid, "cache" | "cells"> = {
   width: 50,
   height: 50,
-  rule: "b3s23",
+//  rule: "b3s23",
+  rule: "r8m0s26-32b26-32d",
   mode: "Fixed",
   alpha: 1,
   beta: 1,

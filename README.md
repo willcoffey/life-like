@@ -1,5 +1,10 @@
+
+"FOO"
+
 # Almost Life-Like - A Probabilistic extension of Conways Game of Life
 and other life-like automata
+
+@TODO - img embead seperator (sin wave activation)
 
 ## About
 This project is an exploration of extending life-like automata to continous states by interpreting
@@ -16,18 +21,42 @@ loading PNG images and a ffmpeg pipeline for creating `.webp` videos.
 A demo page can be found here @TODO
 
 ## Installation
-The web app is a vanilla-web-component and is bundled with the repo. It can be
-viewed by opening [demo.html](./demo.html)
-
-
 This project uses [0][Deno] as a runtime.
+
+
+### Clone the Repo
 ```
 git clone git@github.com:willcoffey/life-like
 git submodule update --init
+```
 
-deno task 
+### Web App
+The web app is a vanilla-web-component and is bundled with the repo. It can be
+viewed by opening the [demo.html](./demo.html) in the root of the repo. It can
+also be hosted via a vite dev server targeting `index.html` via `deno task dev`
 
+### Terminal Utility
+The terminal utility can be used to load, generate, and run the automata as well
+as pipe raw data for use in pipelines with `ffmpeg` or other tools. For 
+additional details see `terminal-life -h`.
 
+To run the utility without installing
+`deno run --allow-read --allow-write ./src/terminal-life.ts -t 100 --out life.png`
 
+which will run the default grid for 100 ticks. To install globally, run
+`deno install -g --allow-read --allow-write ./src/terminal-life.ts` which will 
+install it as `terminal-life`.
 
 [0]: https://deno.com/
+---
+
+## Usage
+### Using the Web App
+
+### Generating images
+
+### Generating videos
+
+### Sharing state
+
+

@@ -24,22 +24,30 @@ Life-Like Terminal
 
   -h --help         Print this help
   -t --ticks N      Advance the grid by N ticks before saving (default: 0)
-  --load FILENAME   Load initial grid (cells + embedded state) from PNG. If omitted, grid is randomized.
-  --out FILENAME    Write resulting grid to PNG file. If omitted, nothing is written.
-  --stream          Stream PNG of each frame to stdout for use with ImageMagick pipelines
+  --load FILENAME   Load initial grid (cells + embedded state) from PNG. If 
+                    omitted, grid is randomized.
+  --out FILENAME    Write resulting grid to PNG file.
+  --stream          Stream RGBA  to stdout, for use with ffmpeg
   --width N         Grid width in cells. Ignored when --load is used.
   --height N        Grid height in cells. Ignored when --load is used.
   --alpha N         First shaping parameter for the activation function.
   --beta N          Second shaping parameter for the activation function.
-  --rate N          Smoothing factor on per-tick updates; higher values apply smaller per-cell changes. 1 matches classic Conway.
-  --phase RANGE     PhaseDiagram mode: linearly interpolate alpha and beta across the grid using the given min:max ranges. Overrides fixed --alpha / --beta values.
-  --activation NAME Activation function to use (e.g. gaussian, sin, sigmoid). See shapers.ts for the full list.
-  --theme           Name of a palette. magma, inferno, plasma, viridis, cividis, turbo, berlin, managua, vanimo
+  --rate N          Smoothing factor on per-tick updates; higher values apply 
+                    smaller per-cell changes. 1 matches classic Conway.
+  --phase RANGE     PhaseDiagram mode: linearly interpolate alpha and beta across the grid using 
+                    the given min:max ranges. Overrides fixed --alpha / --beta values.
+  --activation NAME Activation function to use (e.g. gaussian, sin, sigmoid). See shapers.ts
+  --theme           Name of a palette. magma, inferno, plasma, viridis, cividis, turbo, berlin,
+                     managua, vanimo
   -v --verbose      Log output details
+  --rule            The rule to run, either lifelike or LtL  B36/S23 
+                    Lifelike: "b36s23" means birth on 3 or 6 and survive 2 or 3
+                    LtL: "r5m1s34-58b34-45m" where that means radius 5 middle included survive
+                    between 34 and 58, birth between 34 and 45, use a moore neighborhood. "d" for
+                    disc neighborhood also supported.
+    
+=================================== Examples ==================================
 
-  --rule            r4s24..28b24..30
-
-============================================= Examples ============================================
   # Seed a random grid, tick 50 times, save
   terminal-life --ticks 50 --out run.png
 
