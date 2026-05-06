@@ -1,8 +1,7 @@
-test
-# Almost Life-Like - A Probabilistic extension of Conways Game of Life
-and other life-like automata
+# *Almost* Life-Like
+<p class="subtitle">A Probabilistic extension of Conways Game of Life and other life-like automata</p>
 
-@TODO - img embead seperator (sin wave activation)
+<img src="assets/banner.png" />
 
 ## About
 This project is an exploration of extending life-like automata to continous states by interpreting

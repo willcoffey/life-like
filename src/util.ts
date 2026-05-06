@@ -1,4 +1,3 @@
-
 export interface CommandLineOptions {
   options: Record<string, string>;
   flags: Record<string, true>;
@@ -73,4 +72,21 @@ export function parseCommandLineOptions(
 /** Shorthand utility for detecting stuff like --negative=-44 */
 function isEqArg(arg: string) {
   return arg.indexOf("=") !== -1;
+}
+
+/**
+ * FNV-1a 128-bit hash of a Float64Array's raw bytes.
+ * Adapted from @sindresorhus/fnv1a (MIT)
+ * https://github.com/sindresorhus/fnv1a/blob/main/index.js
+ */
+export function hashFloatArray128(cells: Float64Array): string {
+  const OFFSET = 144_066_263_297_769_815_596_495_629_667_062_367_629n;
+  const PRIME = 309_485_009_821_345_068_724_781_371n;
+  let hash = OFFSET;
+  const bytes = new Uint8Array(cells.buffer, cells.byteOffset, cells.byteLength);
+  for (let i = 0; i < bytes.length; i++) {
+    hash ^= BigInt(bytes[i]);
+    hash = BigInt.asUintN(128, hash * PRIME);
+  }
+  return hash.toString(16).padStart(32, "0");
 }

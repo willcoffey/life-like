@@ -4,6 +4,7 @@
 import { NAMED_RULES, Rule, Rules } from "./lib/rules.ts";
 import { isShaperName, Shaper, ShaperName, Shapers } from "./shapers.ts";
 import { PaletteName, Themes } from "./lib/ColorMap.ts";
+import { hashFloatArray128 } from "./util.ts";
 
 /** Create a seeded random function to replace Math.random() for determinism */
 const Random = splitmix32(2567452050);
@@ -14,7 +15,7 @@ const DIAGRAMS: DiagramType[] = ["birth", "survival", "activation"];
 const DEFAULT_GRID: Optional<Grid, "cache" | "cells"> = {
   width: 50,
   height: 50,
-//  rule: "b3s23",
+  //  rule: "b3s23",
   rule: "r8m0s26-32b26-32d",
   mode: "Fixed",
   alpha: 1,
@@ -55,24 +56,22 @@ export interface Grid {
   // Which is Conways
   rule: string;
   cells: Float64Array;
-
+  // A determinstic hash of the cells, usefule for testing. gets cleared at the start of every tick
+  hash?: string;
   /** The activation function to use. i.e. gaussian or sin */
   activation: ShaperName;
   /** Properties of the activation function used to shape the probability */
   alpha: number;
   beta: number;
-
   /**
    * how much of the function result to apply to the cell state per tick
    * classic conways only runs at 1
    * @TODO rename
    */
   changeRate: number;
-
   playing: boolean;
   /** Which theme to use to conver 0-1 values to RGBA and back from image data to 0-1 */
   theme: PaletteName;
-
   /**
    * Values that are pure functions of other grid properties. used for performance reasons. never
    * serialized.
@@ -127,8 +126,8 @@ export class LifeLike {
   }
 
   /**
-   * @TODO Mon May  4 04:13:17 PM EDT 2026 
-   * I need to start making test files using JSON lists of commands. use them for 
+   * @TODO Mon May  4 04:13:17 PM EDT 2026
+   * I need to start making test files using JSON lists of commands. use them for
    * blog visuals. Update this to have thorough comments after usage.
    */
   stdin(command: Command) {
@@ -156,6 +155,7 @@ export class LifeLike {
    * Compute the next state of the grid
    */
   static getNextState(grid: Grid): Float64Array {
+    delete grid.hash;
     const nextState = LifeLike.createBufferedArray(grid);
     for (const [position, x, y] of LifeLike.cellIterator(grid)) {
       /**
@@ -309,11 +309,12 @@ export class LifeLike {
   /**
    * @TODO Mon May  4 04:10:58 PM EDT 2026
    * revisit this now that I have added life-like non contiguous rules
-   * maybe a - if r=1 m=0 then life-like else LtL. Works unless a 
+   * maybe a - if r=1 m=0 then life-like else LtL. Works unless a
    * a non contigous LtL somehow exists
    */
-  static makeRuleString({ radius, bRange, sRange, middle, neighborhood }: LtLRule): string {
-    let n = "moore";
+  static makeRuleString(params: RuleParameters): string {
+    const { type, radius, neighborhood, middle } = params;
+    let n: "d" | "m";
     switch (neighborhood) {
       case "disc":
         n = "d";
@@ -322,10 +323,23 @@ export class LifeLike {
         n = "m";
         break;
     }
-    const rule = `r${radius}m${middle ? 1 : 0}s${sRange[0]}-${sRange[1]}b${bRange[0]}-${
-      bRange[1]
-    }${n}`;
-    return rule;
+
+    switch (type) {
+      case "LtL": {
+        const rule = `r${radius}m${middle ? 1 : 0}s${params.sRange[0]}-${params.sRange[1]}b${
+          params.bRange[0]
+        }-${params.bRange[1]}${n}`;
+        return rule;
+      }
+      case "LifeLike": {
+        let rule = `b`;
+        for (let i = 0; i < params.birth.length; i++) if (params.birth[i]) rule += `${i}`;
+        rule += "s";
+        for (let i = 0; i < params.survive.length; i++) if (params.survive[i]) rule += `${i}`;
+        return rule;
+      }
+    }
+    throw "Unknown rule type";
   }
 
   /**
@@ -443,7 +457,6 @@ export class LifeLike {
     return min + (max - min) * (i / size);
   }
 
-
   /**
    * computeNeighborTotalOdds and computeNeighborStateOdds are a brute force way of computing the
    * probabilities of every neighor state for a cell. No longer used since the direct convolution
@@ -545,6 +558,14 @@ export class LifeLike {
       }
     }
   }
+
+  /**
+   * Used to ensure determinism, note that this hash includes the buffer area around the simulated
+   * grid. This means it catches issues with that, but also could throw even when exported images
+   * are identical since they are only the simulated portion.
+   */
+  static createCellHash(cells: Float64Array): string {
+  }
 }
 /**
  * Seeded random number generator. Should have better randomness than mulberry32, don't care about
@@ -597,8 +618,8 @@ const Controls = {
    * magnitude of life cells
    */
   "reset-random"(grid) {
-    const densityRange = [0, 1];
-    const valueRange = [0, 1];
+    const densityRange = [.9999, .9999];
+    const valueRange = [.5, .5];
 
     grid.cells = LifeLike.createBufferedArray(grid);
     for (const [position, x, y] of LifeLike.cellIterator(grid)) {
@@ -752,6 +773,7 @@ const Controls = {
       case "activation":
         grid.alpha = minX + (maxX - minX) / 2;
         grid.beta = minY + (maxY - minY) / 2;
+        grid.rule = LifeLike.makeRuleString(grid.cache.parsedRule);
     }
     grid.cache = LifeLike.buildGridCache(grid);
   },
@@ -803,6 +825,9 @@ const Controls = {
   },
   "debug"(grid) {
     console.log(grid);
+  },
+  "hash"(grid) {
+    grid.hash = hashFloatArray128(grid.cells);
   },
 } satisfies Record<string, Control>;
 type ControlName = keyof typeof Controls;

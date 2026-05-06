@@ -27,6 +27,8 @@ Life-Like Terminal
   --load FILENAME   Load initial grid (cells + embedded state) from PNG. If 
                     omitted, grid is randomized.
   --out FILENAME    Write resulting grid to PNG file.
+  --log-json        Logs the serializable grid metadata in JSON format. I.e. 
+                    everything needed to reproduce state except for cell state.
   --stream          Stream RGBA  to stdout, for use with ffmpeg
   --width N         Grid width in cells. Ignored when --load is used.
   --height N        Grid height in cells. Ignored when --load is used.
@@ -83,6 +85,7 @@ async function main() {
     activation: true,
     theme: true,
     rule: true,
+    "log-json": true,
   });
   if (opts.flags.h || opts.flags.help) return printHelp();
 
@@ -119,6 +122,8 @@ async function main() {
     }
   }
 
+  if (verbose) console.log(life.grid);
+
   /** If ticks is specified, tick the grid by that much */
   if (opts.options.ticks || opts.options.t) {
     const ticks = Number(opts.options.ticks ?? opts.options.t);
@@ -130,6 +135,8 @@ async function main() {
     }
   }
 
+  life.stdin({ "command": "hash" });
+
   /** If an output path is specified, save the resulting PNG to that path */
   if (opts.options.out) {
     savePng(life.grid, opts.options.out);
@@ -137,6 +144,16 @@ async function main() {
   }
 
   if (verbose) console.log(`Took ${((Date.now() - now) / 1000 / 60).toFixed(2)} minutes`);
+
+  if (opts.flags["log-json"] || opts.options["log-json"]) {
+    logGridMetadata(life.grid);
+  }
+}
+
+function logGridMetadata(grid: Grid) {
+  const exclude = new Set(["cache", "cells"]);
+  const json = JSON.stringify(grid, (key, value) => exclude.has(key) ? undefined : value, 2);
+  console.log(json);
 }
 
 function writeAll(buffer: Uint8Array) {
@@ -166,7 +183,11 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
   if (options.phase) {
     const phaseRange = parsePhaseRange(options.phase);
     if (phaseRange) {
-      grid.phaseDiagram = phaseRange;
+      grid.phaseDiagram = {
+        type: "activation",
+        x: phaseRange.alpha,
+        y: phaseRange.beta,
+      };
       grid.mode = "PhaseDiagram";
     } else {
     }
