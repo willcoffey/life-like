@@ -5,8 +5,8 @@
 
 ## About
 This project is an exploration of extending life-like automata to continous states by interpreting
-state as a probability. This differs from Smoothlife and Lenia, which use essentially a convolution
-kernel and growth function.
+state as a probability. This differs from Smoothlife and Lenia, which use convolution kernel to get
+a weighted sum of the neighborhood, then apply a growth function.
 
 The state of each cell is treated as the odds of that cell being alive. The array of neighborhood 
 states is therefore is a poisson binomial, and we can compute a probability mass function for it. 
@@ -29,6 +29,10 @@ git submodule update --init
 deno install -g --allow-read --allow-write ./src/terminal-life.ts
 ```
 
+---
+
+### The Algorithm
+
 ### Web App
 The web app is a vanilla-web-component and is bundled with the repo. It can be
 viewed by opening the [demo.html](./demo.html) in the root of the repo. It can
@@ -39,12 +43,25 @@ The terminal utility can be used to load, generate, and run the automata as well
 as pipe raw data for use in pipelines with `ffmpeg` or other tools. For 
 additional details see `terminal-life -h`.
 
-To run the utility without installing
-`deno run --allow-read --allow-write ./src/terminal-life.ts -t 100 --out life.png`
+To create a basic PNG
+`terminal-life --width 100 --height 100 --rule b3s23 --reset-random --out conway.png --ticks 10`
 
-which will run the default grid for 100 ticks. To install globally, run
-`deno install -g --allow-read --allow-write ./src/terminal-life.ts` which will 
-install it as `terminal-life`.
+which runs conways with a deterministic random seed. It's not very interesting since conways just
+collapses to a blob of the same value. A more interesting rule is `b3456s3456` which produces 
+flickering chaos.
+`terminal-life --width 100 --height 100 --rule b3456s3456 --reset-random --out chaos.png --ticks 50`
+
+---
+
+load-and-tick
+
+log-json and load + log-json
+
+grid search
+
+ffmpeg
+
+
 
 [0]: https://deno.com/
 ---

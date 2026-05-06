@@ -59,6 +59,28 @@ export const Shapers = {
   },
 
   /**
+   * Hermite smoothstep: 3t² - 2t³ over a window centered at alpha with width
+   * beta, clamped to [0, 1] outside. Like sigmoid but with a finite support
+   * region and zero derivative at the edges.
+   *  - alpha is the center of the transition
+   *  - beta is the width of the transition
+   */
+  smoothstep: {
+    fn(x: number, alpha: number, beta: number): number {
+      if (beta === 0) return x < alpha ? 0 : 1;
+      const half = beta / 2;
+      const t = (x - (alpha - half)) / beta;
+      if (t <= 0) return 0;
+      if (t >= 1) return 1;
+      return t * t * (3 - 2 * t);
+    },
+    diagram: {
+      "alpha": [-0.5, 1.5],
+      "beta": [0, 1],
+    },
+  },
+
+  /**
    * Similar S shape to a sigmoid, but f(0) = 0 and f(1) = 1.
    * Input must be 0-1.
    */
