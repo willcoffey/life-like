@@ -1,3 +1,5 @@
+import type { Grid } from "./core.ts";
+
 export interface CommandLineOptions {
   options: Record<string, string>;
   flags: Record<string, true>;
@@ -89,4 +91,49 @@ export function hashFloatArray128(cells: Float64Array): string {
     hash = BigInt.asUintN(128, hash * PRIME);
   }
   return hash.toString(16).padStart(32, "0");
+}
+
+/**
+ * @TODO Wed May  6 02:02:49 PM EDT 2026
+ * Stub until I update terminal life API
+ *
+ * Convert a serialized Grid back into the `terminal-life` CLI command
+ * that would reproduce it. Round-trip companion to `--log-json`.
+ *
+ * Negative values use `--name=value` form -- bare `-0.5` would be read
+ * as a new short-flag bundle by `parseCommandLineOptions`.
+ *
+ * Drops `playing`, `hash` (no CLI counterpart) and `phaseDiagram` while
+ * in Fixed mode (not load-bearing -- it just remembers the last viewport).
+ */
+export function gridToCommand(grid: Grid): string {
+  const args: string[] = [];
+
+  const pushNumber = (name: string, value: number) => {
+    if (value < 0) args.push(`--${name}=${value}`);
+    else args.push(`--${name}`, String(value));
+  };
+
+  pushNumber("width", grid.width);
+  pushNumber("height", grid.height);
+  args.push("--rule", grid.rule);
+  args.push("--activation", grid.activation);
+  args.push("--theme", grid.theme);
+  pushNumber("alpha", grid.alpha);
+  pushNumber("beta", grid.beta);
+  // CLI flag is `--rate`, grid property is `changeRate` -- the one mismatch.
+  pushNumber("rate", grid.changeRate);
+
+  // `--phase` implicitly sets PhaseDiagram mode, so no separate --mode flag.
+  if (grid.mode === "PhaseDiagram") {
+    const { x: [aMin, aMax], y: [bMin, bMax] } = grid.phaseDiagram;
+    const range = `${aMin}:${aMax},${bMin}:${bMax}`;
+    if (aMin < 0 || aMax < 0 || bMin < 0 || bMax < 0) {
+      args.push(`--phase=${range}`);
+    } else {
+      args.push("--phase", range);
+    }
+  }
+  pushNumber("ticks", grid.tick);
+  return ["terminal-life", ...args].join(" ");
 }

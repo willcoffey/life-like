@@ -1,6 +1,9 @@
 import { Grid } from "../core";
-type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
-type GridState = PartialBy<Grid, "cells" | "cache">;
+import { gridToCommand } from "../util.ts";
+
+/** Drops runtime-only fields when serializing a Grid. */
+const omitRuntime = (key: string, value: unknown) =>
+  key === "cells" || key === "cache" ? undefined : value;
 /**
  * Visual bar to represent the values 0 - 1 in the automatas color scale
  */
@@ -68,7 +71,7 @@ const HTML = `
 export class StateDisplay extends HTMLElement {
   shadow?: ShadowRoot;
   lastState?: string;
-  lastGrid?: GridState;
+  lastGrid?: Grid;
   constructor() {
     super();
   }
@@ -82,10 +85,12 @@ export class StateDisplay extends HTMLElement {
     this.shadow.innerHTML = HTML;
 
     this.shadow.getElementById("copy-json")?.addEventListener("click", () => {
-      if (this.lastGrid) navigator.clipboard.writeText(JSON.stringify(this.lastGrid));
+      if (this.lastGrid) {
+        navigator.clipboard.writeText(JSON.stringify(this.lastGrid, omitRuntime));
+      }
     });
     this.shadow.getElementById("copy-command")?.addEventListener("click", () => {
-      if (this.lastGrid) navigator.clipboard.writeText(toTerminalCommand(this.lastGrid));
+      if (this.lastGrid) navigator.clipboard.writeText(gridToCommand(this.lastGrid));
     });
 
     const pasteEl = this.shadow.getElementById("paste-json") as HTMLTextAreaElement | null;
@@ -108,14 +113,11 @@ export class StateDisplay extends HTMLElement {
 
   render(grid: Grid) {
     /** Check against old state and return early if nothing has changed */
-    const newGrid: GridState = { ...grid }
-    delete newGrid.cells;
-    delete newGrid.cache;
-
-    const newString = JSON.stringify(newGrid) + `|n:${grid.cache.neighborhood.length}`;
+    const newString = JSON.stringify(grid, omitRuntime) +
+      `|n:${grid.cache.neighborhood.length}`;
     if (newString === this.lastState) return;
     this.lastState = newString;
-    this.lastGrid = newGrid;
+    this.lastGrid = grid;
 
     const set = (id: string, text: string) => {
       const el = this.shadow?.getElementById(id);
@@ -137,23 +139,4 @@ export class StateDisplay extends HTMLElement {
   }
 }
 
-/**
- * Convert non-cell grid state into a terminal-life command line. Only the
- * options that terminal-life parses are emitted (see terminal-life.ts).
- */
-function toTerminalCommand(grid: GridState): string {
-  const parts = ["terminal-life"];
-  if (grid.width !== undefined) parts.push(`--width=${grid.width}`);
-  if (grid.height !== undefined) parts.push(`--height=${grid.height}`);
-  if (grid.alpha !== undefined) parts.push(`--alpha=${grid.alpha}`);
-  if (grid.beta !== undefined) parts.push(`--beta=${grid.beta}`);
-  if (grid.changeRate !== undefined) parts.push(`--rate=${grid.changeRate}`);
-  if (grid.activation !== undefined) parts.push(`--activation=${grid.activation}`);
-  if (grid.theme !== undefined) parts.push(`--theme=${grid.theme}`);
-  if (grid.mode === "PhaseDiagram" && grid.phaseDiagram) {
-    const { x, y } = grid.phaseDiagram;
-    parts.push(`--phase=${x[0]}:${x[1]},${y[0]}:${y[1]}`);
-  }
-  return parts.join(" ");
-}
 customElements.define("state-display", StateDisplay);

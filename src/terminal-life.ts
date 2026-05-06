@@ -47,6 +47,7 @@ Life-Like Terminal
                     LtL: "r5m1s34-58b34-45m" where that means radius 5 middle included survive
                     between 34 and 58, birth between 34 and 45, use a moore neighborhood. "d" for
                     disc neighborhood also supported.
+  --reset-random    Seed the grid with random values from a deterministic PRNG
     
 =================================== Examples ==================================
 
@@ -91,9 +92,9 @@ async function main() {
 
   const verbose = opts.flags.v ?? opts.flags.verbose;
   const inputGrid = parseGridFromArguments(opts);
-
   let life: LifeLike;
 
+  /** Build the grid */
   if (opts.options.load) {
     /**
      * If we are loading a PNG, we should use it's saved grid properties but override anything
@@ -105,24 +106,12 @@ async function main() {
     Object.assign(loadedGrid, { width, height });
     life = new LifeLike(loadedGrid);
   } else {
-    /** Create a new grid with some random data */
+    /** Create a new grid */
     life = new LifeLike(inputGrid);
-    if (verbose) {
-      console.log(life.grid);
-      console.log("Total neighbor cells: " + life.grid.cache.neighborhood.length);
-    }
-
-    //@TODO - temp
-    life.stdin({ command: "goto-start" });
-    life.stdin({ command: "reset-random" });
-
-    /** If we are in fixed mode, seed with random data */
-    if (!inputGrid.mode || inputGrid.mode === "Fixed") {
-      life.stdin({ command: "reset-random" });
-    }
   }
 
   if (verbose) console.log(life.grid);
+  if (opts.flags["reset-random"]) life.stdin({ "command": "reset-random" });
 
   /** If ticks is specified, tick the grid by that much */
   if (opts.options.ticks || opts.options.t) {
@@ -133,9 +122,10 @@ async function main() {
       }
       life.stdin({ "command": "tick" });
     }
-  }
 
-  life.stdin({ "command": "hash" });
+    // compute the hash of this tick and store it on the grid
+    life.stdin({ "command": "hash" });
+  }
 
   /** If an output path is specified, save the resulting PNG to that path */
   if (opts.options.out) {
@@ -143,11 +133,15 @@ async function main() {
     if (verbose) console.log(`Saved file to ${opts.options.out}`);
   }
 
-  if (verbose) console.log(`Took ${((Date.now() - now) / 1000 / 60).toFixed(2)} minutes`);
-
   if (opts.flags["log-json"] || opts.options["log-json"]) {
-    logGridMetadata(life.grid);
+    if (verbose) {
+      console.log(life.grid);
+    } else {
+      logGridMetadata(life.grid);
+    }
   }
+
+  if (verbose) console.log(`Took ${((Date.now() - now) / 1000 / 60).toFixed(2)} minutes`);
 }
 
 function logGridMetadata(grid: Grid) {

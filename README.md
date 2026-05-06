@@ -1,7 +1,7 @@
 # *Almost* Life-Like
 <p class="subtitle">A Probabilistic extension of Conways Game of Life and other life-like automata</p>
 
-<img src="assets/banner.png" />
+<img src="tests/fixtures/banner.png" />
 
 ## About
 This project is an exploration of extending life-like automata to continous states by interpreting
@@ -18,13 +18,15 @@ loading PNG images and a ffmpeg pipeline for creating `.webp` videos.
 A demo page can be found here @TODO
 
 ## Installation
-This project uses [0][Deno] as a runtime.
-
+This project uses [Deno][0] as a runtime, so it must be installed first
 
 ### Clone the Repo
 ```
 git clone git@github.com:willcoffey/life-like
 git submodule update --init
+
+# Make the terminal utility accessible globally
+deno install -g --allow-read --allow-write ./src/terminal-life.ts
 ```
 
 ### Web App

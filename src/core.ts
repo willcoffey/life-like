@@ -13,6 +13,7 @@ const DIAGRAMS: DiagramType[] = ["birth", "survival", "activation"];
  * Used as the source of default parameters for creating a grid
  */
 const DEFAULT_GRID: Optional<Grid, "cache" | "cells"> = {
+  tick: 0,
   width: 50,
   height: 50,
   //  rule: "b3s23",
@@ -56,6 +57,8 @@ export interface Grid {
   // Which is Conways
   rule: string;
   cells: Float64Array;
+  // The number of ticks this grid has experienced, used for testing / command replay
+  tick: number;
   // A determinstic hash of the cells, usefule for testing. gets cleared at the start of every tick
   hash?: string;
   /** The activation function to use. i.e. gaussian or sin */
@@ -156,6 +159,7 @@ export class LifeLike {
    */
   static getNextState(grid: Grid): Float64Array {
     delete grid.hash;
+
     const nextState = LifeLike.createBufferedArray(grid);
     for (const [position, x, y] of LifeLike.cellIterator(grid)) {
       /**
@@ -202,6 +206,7 @@ export class LifeLike {
       }
     }
 
+    grid.tick++;
     return nextState;
   }
 
@@ -558,14 +563,6 @@ export class LifeLike {
       }
     }
   }
-
-  /**
-   * Used to ensure determinism, note that this hash includes the buffer area around the simulated
-   * grid. This means it catches issues with that, but also could throw even when exported images
-   * are identical since they are only the simulated portion.
-   */
-  static createCellHash(cells: Float64Array): string {
-  }
 }
 /**
  * Seeded random number generator. Should have better randomness than mulberry32, don't care about
@@ -617,10 +614,7 @@ const Controls = {
    * Resets the grid, interpolating over width & height to set density and
    * magnitude of life cells
    */
-  "reset-random"(grid) {
-    const densityRange = [.9999, .9999];
-    const valueRange = [.5, .5];
-
+  "reset-random"(grid, densityRange = [.5, .5], valueRange = [0, 1]) {
     grid.cells = LifeLike.createBufferedArray(grid);
     for (const [position, x, y] of LifeLike.cellIterator(grid)) {
       const density = LifeLike.linearInterpolate(grid.width, x, densityRange[0], densityRange[1]);
