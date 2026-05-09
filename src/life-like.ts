@@ -156,9 +156,12 @@ class LifeLikeElement extends HTMLElement {
     vlk.bind("brush:<n>", "set-mode:normal", "Exit brush mode back to normal mode");
     vlk.bind("<b>", "set-mode:brush", "Enter brush mode, for changing the parameters of the brush");
 
-
     /** New VLK api, should start transitioning older keybinds - once cemented */
-    vlk.bind("normal:<d><a>", "set-diagram:activation", "Set phase diagram mode to activation function");
+    vlk.bind(
+      "normal:<d><a>",
+      "set-diagram:activation",
+      "Set phase diagram mode to activation function",
+    );
     vlk.bind("normal:<d><r>", "set-diagram:rule", "Set phase diagram mode to rule interpolation");
 
     /**
@@ -172,8 +175,7 @@ class LifeLikeElement extends HTMLElement {
     vlk.bindKeys("<+>", "zoom-in", "normal");
     vlk.bindKeys("<->", "zoom-out", "normal");
 
-    /**
-     */
+    /** */
     vlk.bindKeys("<s>", "increase-smid", "normal");
     vlk.bindKeys("<Shift-S>", "decrease-smid", "normal");
     vlk.bindKeys("<b>", "increase-bmid", "normal");
@@ -198,7 +200,6 @@ class LifeLikeElement extends HTMLElement {
     vlk.bindKeys("<a>", "next-activation", "normal");
     vlk.bindKeys("<Shift-A>", "prev-activation", "normal");
 
-
     vlk.bindKeys("<c>", "increase-rate", "normal");
     vlk.bindKeys("<Shift-C>", "decrease-rate", "normal");
 
@@ -208,7 +209,11 @@ class LifeLikeElement extends HTMLElement {
      * bindings for manipulating the grid. reset, random pixels
      */
     //vlk.bindKeys("<s>", "make-symmetric", "normal");
-    vlk.bindKeys("<r>", "reset-random", "normal");
+    vlk.bindKeys("<r><r>", "reset-random", "normal");
+    vlk.bindKeys("<r><s>", "reset-random", "normal", {
+      densityRange: [.9999, .9999],
+      valueRange: [0, 1],
+    });
     vlk.bindKeys("<x>", "reset", "normal");
 
     vlk.bindKeys("<f>", "blink-control", "normal");

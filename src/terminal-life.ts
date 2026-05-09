@@ -48,6 +48,8 @@ Life-Like Terminal
                     between 34 and 58, birth between 34 and 45, use a moore neighborhood. "d" for
                     disc neighborhood also supported.
   --reset-random    Seed the grid with random values from a deterministic PRNG
+  --reset-sparse    Seed the grid with random values with a low density, most cells dead
+
     
 =================================== Examples ==================================
 
@@ -112,6 +114,15 @@ async function main() {
 
   if (verbose) console.log(life.grid);
   if (opts.flags["reset-random"]) life.stdin({ "command": "reset-random" });
+  if (opts.flags["reset-sparse"]) {
+    life.stdin({
+      "command": "reset-random",
+      args: {
+        densityRange: [.999, .999],
+        valueRange: [0, 1],
+      },
+    });
+  }
 
   /** If ticks is specified, tick the grid by that much */
   if (opts.options.ticks || opts.options.t) {

@@ -647,7 +647,6 @@ const Controls = {
   /** Toggles between PhaseDiagram mode and FixedMode */
   "toggle-mode"(grid) {
     grid.mode = grid.mode === "PhaseDiagram" ? "Fixed" : "PhaseDiagram";
-
   },
   "set-diagram"(grid, diagram: string) {
     /** Sets the diagram type, which is a prop on grid.phaseDiagram */
@@ -679,7 +678,9 @@ const Controls = {
    * Resets the grid, interpolating over width & height to set density and
    * magnitude of life cells
    */
-  "reset-random"(grid, densityRange = [.5, .5], valueRange = [0, 1]) {
+  "reset-random"(grid, { densityRange, valueRange } = {}) {
+    if (!densityRange) densityRange = [.5, .5];
+    if (!valueRange) valueRange = [0, 1];
     grid.cells = LifeLike.createBufferedArray(grid);
     for (const [position, x, y] of LifeLike.cellIterator(grid)) {
       const density = LifeLike.linearInterpolate(grid.width, x, densityRange[0], densityRange[1]);
