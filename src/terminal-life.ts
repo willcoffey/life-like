@@ -1,5 +1,5 @@
 import { CommandLineOptions, parseCommandLineOptions } from "./util.ts";
-import { isShaperName } from "./shapers.ts";
+import { isShaperName, Shapers } from "./shapers.ts";
 import { Grid, LifeLike } from "./core.ts";
 import { ColorMap, isPaletteName, PaletteName } from "./lib/ColorMap.ts";
 import { PNG } from "npm:pngjs@7.0.0";
@@ -173,6 +173,14 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
     if (Number.isNaN(value)) throw `Error: ${key} should be a number`;
   }
 
+  const { activation } = options;
+  if (activation) {
+    if (!isShaperName(activation)) {
+      throw `Error: invalid activation function specified`;
+    }
+    grid.activation = activation;
+  }
+
   /** Validate the string props - phase diagram range, validator function */
   if (options.phase) {
     const phaseRange = parsePhaseRange(options.phase);
@@ -183,23 +191,19 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
         y: phaseRange.beta,
       };
       grid.mode = "PhaseDiagram";
-    } else {
     }
+  } else if (flags.phase && grid.activation) {
+    /** phase was specified without a range, use activation default */
+    grid.mode = "PhaseDiagram";
+    grid.phaseDiagram = {
+      type: "activation",
+      x: Shapers[grid.activation].diagram.alpha,
+      y: Shapers[grid.activation].diagram.beta,
+    };
   }
 
   if (options.rule) {
     grid.rule = options.rule;
-  }
-
-  /** phase was specified without a range, use activation default */
-  if (flags.phase) grid.mode = "PhaseDiagram";
-
-  const { activation } = options;
-  if (activation) {
-    if (!isShaperName(activation)) {
-      throw `Error: invalid activation function specified`;
-    }
-    grid.activation = activation;
   }
 
   const { theme } = options;
@@ -214,10 +218,11 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
 function loadPng(path: string): Grid {
   const bytes = Deno.readFileSync(path);
   const state = JSON.parse(extractLifeLikeTextChunk(bytes, "life-state"));
+  const cache = LifeLike.buildGridCache(state);
   colorMap.load(state.theme);
 
   const png = PNG.sync.read(Buffer.from(bytes));
-  const cells = pixelsToCells(png.data, png.width, png.height, state.neighborhoodSize);
+  const cells = pixelsToCells(png.data, png.width, png.height, cache.parsedRule.radius);
 
   return { ...state, cells };
 }
@@ -266,16 +271,15 @@ function pixelsToCells(
   data: Uint8Array,
   width: number,
   height: number,
-  neighborhoodSize: number,
+  radius: number,
 ): Float64Array {
-  const r = neighborhoodSize;
-  const physWidth = width + 2 * r;
-  const physHeight = height + 2 * r;
+  const physWidth = width + 2 * radius;
+  const physHeight = height + 2 * radius;
   const cells = new Float64Array(physWidth * physHeight);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const src = (y * width + x) * 4;
-      const physPos = (y + r) * physWidth + (x + r);
+      const physPos = (y + radius) * physWidth + (x + radius);
       cells[physPos] = colorMap.fromRGBA(
         data[src],
         data[src + 1],

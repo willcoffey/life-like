@@ -8,7 +8,6 @@ import { hashFloatArray128 } from "./util.ts";
 
 /** Create a seeded random function to replace Math.random() for determinism */
 const Random = splitmix32(2567452050);
-const DIAGRAMS: DiagramType[] = ["birth", "survival", "activation"];
 /**
  * Used as the source of default parameters for creating a grid
  */
@@ -17,15 +16,19 @@ const DEFAULT_GRID: Optional<Grid, "cache" | "cells"> = {
   width: 50,
   height: 50,
   //  rule: "b3s23",
-  rule: "r8m0s26-32b26-32d",
+  // rule: "r8m0s26-32b26-32d",
+  // rule: "r5m0s26-32b26-32m",
+  rule: "r5m0s35-107b10-27m",
   mode: "Fixed",
   alpha: 1,
   beta: 1,
   activation: "none",
   phaseDiagram: {
-    type: "survival",
-    x: [0, 8],
-    y: [0, 8],
+    type: "rule",
+    lowB: 0,
+    lowS: 0,
+    x: [0, 80],
+    y: [0, 80],
   },
   theme: "viridis",
   changeRate: 1,
@@ -40,7 +43,6 @@ interface Command {
   command: string;
   [key: string]: any;
 }
-type DiagramType = "birth" | "survival" | "activation";
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 export interface Grid {
@@ -86,8 +88,17 @@ export interface Grid {
  * Phase Diagram settings for different modes. Determines what ranges to sweep over and how to
  * apply the cell update function
  */
-export interface PhaseDiagram {
-  type: DiagramType;
+export type PhaseDiagram = RulePhaseDiagram | ActivationPhaseDiagram;
+interface ActivationPhaseDiagram {
+  type: "activation";
+  x: [number, number];
+  y: [number, number];
+}
+
+interface RulePhaseDiagram {
+  type: "rule";
+  lowS: number;
+  lowB: number;
   x: [number, number];
   y: [number, number];
 }
@@ -191,12 +202,16 @@ export class LifeLike {
       else if (state > 1) state = 1;
       state = grid.cells[position] + ((state - grid.cells[position]) / grid.changeRate);
       nextState[position] = state;
+      if (isNaN(state)) {
+        console.log(rule);
+        throw "adsad";
+      }
 
       /**
        * If in Fixed mode, copy the buffered edges to the opposite sides to make updates flow
        * from one side of the grid to the opposite side. A toroidal topology.
        */
-      if (grid.mode === "Fixed") {
+      if (true || grid.mode === "Fixed") {
         LifeLike.copyBufferedEdges(
           nextState,
           grid.width,
@@ -208,6 +223,13 @@ export class LifeLike {
 
     grid.tick++;
     return nextState;
+  }
+
+  static createRange(min: number, size: number): [number, number] {
+    if (min < 0) min = 0;
+    min = Math.round(min);
+    size = Math.round(size);
+    return [min, min + size];
   }
 
   /**
@@ -232,6 +254,26 @@ export class LifeLike {
       case "activation":
         const [alpha, beta] = LifeLike.getPhaseParameters(grid, x, y);
         return [grid.cache.rule, alpha, beta];
+        break;
+      case "rule":
+        /**
+         * For interpolating over the rules, use a fixed midpoint and interpolate over the size
+         */
+        const { lowB, lowS } = grid.phaseDiagram;
+        const [minX, maxX] = grid.phaseDiagram.x;
+        const [minY, maxY] = grid.phaseDiagram.y;
+
+        const xSize = Math.round(LifeLike.linearInterpolate(grid.width, x, minX, maxX));
+        const ySize = Math.round(LifeLike.linearInterpolate(grid.height, y, minY, maxY));
+        const n = grid.cache.neighborhood.length;
+
+        if (xSize < 0 || ySize < 0 || xSize > n || ySize > n) {
+          return [Rules.zero, grid.alpha, grid.beta];
+        }
+        const sRange = LifeLike.createRange(lowS, ySize);
+        const bRange = LifeLike.createRange(lowB, xSize);
+        const rule = Rules.largerThanLife.bind(null, sRange, bRange, false);
+        return [rule, grid.alpha, grid.beta];
         break;
     }
 
@@ -281,8 +323,9 @@ export class LifeLike {
       const middle = !!Number(m);
       const sRange: [number, number] = [Number(sMin), Number(sMax)];
       const bRange: [number, number] = [Number(bMin), Number(bMax)];
-      sRange.sort();
-      bRange.sort();
+
+      sRange.sort((a, b) => a - b);
+      bRange.sort((a, b) => a - b);
 
       switch (n) {
         case "m":
@@ -331,6 +374,9 @@ export class LifeLike {
 
     switch (type) {
       case "LtL": {
+        params.sRange = [Math.max(0, params.sRange[0]), Math.max(0, params.sRange[1])];
+        params.bRange = [Math.max(0, params.bRange[0]), Math.max(0, params.bRange[1])];
+
         const rule = `r${radius}m${middle ? 1 : 0}s${params.sRange[0]}-${params.sRange[1]}b${
           params.bRange[0]
         }-${params.bRange[1]}${n}`;
@@ -601,14 +647,33 @@ const Controls = {
   /** Toggles between PhaseDiagram mode and FixedMode */
   "toggle-mode"(grid) {
     grid.mode = grid.mode === "PhaseDiagram" ? "Fixed" : "PhaseDiagram";
+
   },
-  "next-diagram"(grid) {
-    const i = DIAGRAMS.indexOf(grid.phaseDiagram.type);
-    grid.phaseDiagram.type = DIAGRAMS[(i + 1) % DIAGRAMS.length];
-  },
-  "prev-diagram"(grid) {
-    const i = DIAGRAMS.indexOf(grid.phaseDiagram.type);
-    grid.phaseDiagram.type = DIAGRAMS[(i - 1) % DIAGRAMS.length];
+  "set-diagram"(grid, diagram: string) {
+    /** Sets the diagram type, which is a prop on grid.phaseDiagram */
+    if (diagram !== "rule" && diagram !== "activation") throw "Invalid set diagram value";
+    switch (diagram) {
+      case "rule":
+        if (grid.cache.parsedRule.type != "LtL") throw "Cannot interpolate non-LtL rules";
+        const nieghborCount = grid.cache.parsedRule.radius;
+        const diagram: PhaseDiagram = {
+          type: "rule",
+          lowS: Math.round(grid.cache.neighborhood.length / 2),
+          lowB: Math.round(grid.cache.neighborhood.length / 2),
+          x: [0, grid.cache.neighborhood.length],
+          y: [0, grid.cache.neighborhood.length],
+        };
+        grid.phaseDiagram = diagram;
+        break;
+      case "activation":
+        // Set the diagram to whatever the default is for the current activation
+        grid.phaseDiagram = {
+          type: "activation",
+          x: Shapers[grid.activation].diagram.alpha,
+          y: Shapers[grid.activation].diagram.beta,
+        };
+        break;
+    }
   },
   /**
    * Resets the grid, interpolating over width & height to set density and
@@ -744,26 +809,19 @@ const Controls = {
     if (grid.mode === "Fixed") return;
     const [minX, maxX] = grid.phaseDiagram.x;
     const [minY, maxY] = grid.phaseDiagram.y;
-
     switch (grid.phaseDiagram.type) {
-      /*
-      case "birth":
-        const bRange = [
-          Math.round(minX + (maxX - minX) / 2),
-          Math.round(minY + (maxY - minY) / 2),
-        ].sort((a, b) => a - b) as [number, number];
-        grid.cache.parsedRule.bRange = bRange;
+      case "rule":
+        if (grid.cache.parsedRule.type !== "LtL") {
+          throw "Cannot use phase diagram on non LtL rules";
+        }
+        const { lowS, lowB } = grid.phaseDiagram;
+        // x window -> sRange size; y window -> bRange size (matches getInterpolatedRule)
+        const bSize = Math.round((minX + maxX) / 2);
+        const sSize = Math.round((minY + maxY) / 2);
+        grid.cache.parsedRule.sRange = LifeLike.createRange(lowS, sSize);
+        grid.cache.parsedRule.bRange = LifeLike.createRange(lowB, bSize);
         grid.rule = LifeLike.makeRuleString(grid.cache.parsedRule);
         break;
-      case "survival":
-        const sRange = [
-          Math.round(minX + (maxX - minX) / 2),
-          Math.round(minY + (maxY - minY) / 2),
-        ].sort((a, b) => a - b) as [number, number];
-        grid.cache.parsedRule.sRange = sRange;
-        grid.rule = LifeLike.makeRuleString(grid.cache.parsedRule);
-        break;
-       */
       case "activation":
         grid.alpha = minX + (maxX - minX) / 2;
         grid.beta = minY + (maxY - minY) / 2;
@@ -778,17 +836,26 @@ const Controls = {
   "set-activation"(grid, name: string) {
     if (isShaperName(name)) {
       grid.activation = name;
+      grid.phaseDiagram = {
+        type: "activation",
+        x: Shapers[name].diagram.alpha,
+        y: Shapers[name].diagram.alpha,
+      };
     }
+
+    grid.cache = LifeLike.buildGridCache(grid);
   },
   "next-activation"(grid) {
     const names = Object.keys(Shapers) as ShaperName[];
     const i = names.indexOf(grid.activation);
     grid.activation = names[(i + 1) % names.length];
+    grid.cache = LifeLike.buildGridCache(grid);
   },
   "prev-activation"(grid) {
     const names = Object.keys(Shapers) as ShaperName[];
     const i = names.indexOf(grid.activation);
     grid.activation = names[(i - 1 + names.length) % names.length];
+    grid.cache = LifeLike.buildGridCache(grid);
   },
   "next-theme"(grid) {
     const i = Themes.indexOf(grid.theme);
@@ -803,6 +870,30 @@ const Controls = {
   },
   "decrease-rate"(grid) {
     if (grid.changeRate > 1) grid.changeRate -= 1;
+  },
+  "increase-smid"(grid) {
+    if (
+      grid.phaseDiagram.type === "rule" &&
+      grid.phaseDiagram.lowS < grid.cache.neighborhood.length
+    ) grid.phaseDiagram.lowS++;
+  },
+  "decrease-smid"(grid) {
+    if (
+      grid.phaseDiagram.type === "rule" &&
+      grid.phaseDiagram.lowS > 0
+    ) grid.phaseDiagram.lowS--;
+  },
+  "increase-bmid"(grid) {
+    if (
+      grid.phaseDiagram.type === "rule" &&
+      grid.phaseDiagram.lowB < grid.cache.neighborhood.length
+    ) grid.phaseDiagram.lowB++;
+  },
+  "decrease-bmid"(grid) {
+    if (
+      grid.phaseDiagram.type === "rule" &&
+      grid.phaseDiagram.lowB > 0
+    ) grid.phaseDiagram.lowB--;
   },
 
   /**

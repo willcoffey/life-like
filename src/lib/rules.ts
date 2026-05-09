@@ -4,6 +4,7 @@ export interface Rule {
 }
 
 export const Rules = {
+  zero: () => 0,
   /**
    * Life-Like style rules where birth/survival values are enumerated explicitly
    * i.e. not as a range but rather as B3/S012345678
@@ -35,6 +36,11 @@ export const Rules = {
     state: number,
     pmf: number[],
   ) => {
+    if (bMin < 0) bMin = 0;
+    if (bMax < 0) bMax = 0;
+    if (sMin < 0) sMin = 0;
+    if (sMax < 0) sMax = 0;
+
     // If the middle is included, we don't need to check our state, just overall neighborhood
     if (middle) {
       let total = 0;

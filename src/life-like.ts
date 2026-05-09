@@ -156,6 +156,11 @@ class LifeLikeElement extends HTMLElement {
     vlk.bind("brush:<n>", "set-mode:normal", "Exit brush mode back to normal mode");
     vlk.bind("<b>", "set-mode:brush", "Enter brush mode, for changing the parameters of the brush");
 
+
+    /** New VLK api, should start transitioning older keybinds - once cemented */
+    vlk.bind("normal:<d><a>", "set-diagram:activation", "Set phase diagram mode to activation function");
+    vlk.bind("normal:<d><r>", "set-diagram:rule", "Set phase diagram mode to rule interpolation");
+
     /**
      * Moving and zooming the window into the phase diagram
      */
@@ -166,6 +171,13 @@ class LifeLikeElement extends HTMLElement {
     vlk.bindKeys("<=>", "zoom-in", "normal");
     vlk.bindKeys("<+>", "zoom-in", "normal");
     vlk.bindKeys("<->", "zoom-out", "normal");
+
+    /**
+     */
+    vlk.bindKeys("<s>", "increase-smid", "normal");
+    vlk.bindKeys("<Shift-S>", "decrease-smid", "normal");
+    vlk.bindKeys("<b>", "increase-bmid", "normal");
+    vlk.bindKeys("<Shift-B>", "decrease-bmid", "normal");
 
     // @TODO - goto standard resolution for current activation function
     vlk.bindKeys("<g><g>", "goto-start", "normal");
@@ -183,27 +195,19 @@ class LifeLikeElement extends HTMLElement {
     /**
      * Change the activation
      */
-    vlk.bindKeys("<Shift-G>", "set-activation", "normal", "gaussian");
-    vlk.bindKeys("<Shift-S>", "set-activation", "normal", "sigmoid");
-    vlk.bindKeys("<Shift-W>", "set-activation", "normal", "will");
-
     vlk.bindKeys("<a>", "next-activation", "normal");
     vlk.bindKeys("<Shift-A>", "prev-activation", "normal");
 
-
-    vlk.bindKeys("<d>", "next-diagram", "normal");
-    vlk.bindKeys("<Shift-D>", "prev-diagram", "normal");
 
     vlk.bindKeys("<c>", "increase-rate", "normal");
     vlk.bindKeys("<Shift-C>", "decrease-rate", "normal");
 
     vlk.bindKeys("<t>", "next-theme", "normal");
     vlk.bindKeys("<Shift-T>", "prev-theme", "normal");
-
     /**
      * bindings for manipulating the grid. reset, random pixels
      */
-    vlk.bindKeys("<s>", "make-symmetric", "normal");
+    //vlk.bindKeys("<s>", "make-symmetric", "normal");
     vlk.bindKeys("<r>", "reset-random", "normal");
     vlk.bindKeys("<x>", "reset", "normal");
 
