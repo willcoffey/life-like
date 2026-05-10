@@ -1,0 +1,11 @@
+{
+  "name": "life-like",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

@@ -424,6 +424,11 @@
     "dependencies": [
       "npm:pngjs@7",
       "npm:vite@^7.3.1"
-    ]
+    ],
+    "packageJson": {
+      "dependencies": [
+        "npm:pngjs@7"
+      ]
+    }
   }
 }

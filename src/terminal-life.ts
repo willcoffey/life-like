@@ -2,9 +2,11 @@ import { CommandLineOptions, parseCommandLineOptions } from "./util.ts";
 import { isShaperName, Shapers } from "./shapers.ts";
 import { Grid, LifeLike } from "./core.ts";
 import { ColorMap, isPaletteName, PaletteName } from "./lib/ColorMap.ts";
-import { PNG } from "npm:pngjs@7.0.0";
+import { PNG } from "pngjs";
 import { Buffer } from "node:buffer";
 import { crc32 } from "node:zlib";
+import { readFileSync, writeFileSync, writeSync } from "node:fs";
+import process from "node:process";
 
 /** Used for mapping floats to rgba and vice versa */
 const colorMap = new ColorMap();
@@ -70,7 +72,7 @@ Life-Like Terminal
 async function main() {
   const now = Date.now();
   //@TODO - Does just true work to set everything?
-  const opts = parseCommandLineOptions(Deno.args, {
+  const opts = parseCommandLineOptions(process.argv.slice(2), {
     t: true,
     ticks: true,
 
@@ -164,8 +166,7 @@ function logGridMetadata(grid: Grid) {
 function writeAll(buffer: Uint8Array) {
   let bytesWritten = 0;
   while (bytesWritten < buffer.length) {
-    const written = Deno.stdout.writeSync(buffer.subarray(bytesWritten));
-    bytesWritten += written;
+    bytesWritten += writeSync(1, buffer.subarray(bytesWritten));
   }
 }
 
@@ -227,7 +228,7 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
 }
 
 function loadPng(path: string): Grid {
-  const bytes = Deno.readFileSync(path);
+  const bytes = readFileSync(path);
   const state = JSON.parse(extractLifeLikeTextChunk(bytes, "life-state"));
   const cache = LifeLike.buildGridCache(state);
   colorMap.load(state.theme);
@@ -316,7 +317,7 @@ function savePng(grid: Grid, path: string) {
   out.set(state, 33);
   out.set(image.subarray(33), 33 + state.length);
 
-  Deno.writeFileSync(path, out);
+  writeFileSync(path, out);
 }
 
 /**

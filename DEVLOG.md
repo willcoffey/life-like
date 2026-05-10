@@ -1,3 +1,8 @@
+# Sun May 10 03:37:56 PM EDT 2026
+Re-establishing current priorities
+ - README.md
+ - JSON command replay?
+
 # Mon May  4 04:24:43 PM EDT 2026
 Too much hacking, cleaning and general coding without revisiting priorities.
 
