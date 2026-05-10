@@ -685,7 +685,6 @@ const Controls = {
     for (const [position, x, y] of LifeLike.cellIterator(grid)) {
       const density = LifeLike.linearInterpolate(grid.width, x, densityRange[0], densityRange[1]);
       const min = LifeLike.linearInterpolate(grid.height, y, valueRange[0], valueRange[1]);
-
       if (Random() > density) {
         grid.cells[position] = Random() * (1 - min) + min;
       } else {

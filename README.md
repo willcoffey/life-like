@@ -39,63 +39,42 @@ A few example commands to demonstrate the terminal app.
 Create a 100x100 png with a deterministic random starting point, tick it 100 times and save as 
 `example_1.png`. The rule is one I know to be chaotic. No activation function.
 
-`terminal-life --rule b3456s3456 --reset-random --width 100 --height 100 --ticks 100 --out chaos.png`
+```
+terminal-life --rule b3456s3456 --reset-random --width 400 --height 200 --ticks 100 --out example_1.png
+```
+
 <img src = "./tests/fixtures/example_1.png" />
 
 Create a phase diagram for the sin activation function for Conways. Note that we don't need to
 initialize the grid to any values since some parameters of the activation function make life from
-0 states.
-`terminal-life --width 500 --height 500 --rule b3s23 --activation sin --theme managua --ticks 100 --phase --out pd.png`
+0 states. Heres another phase diagram, but animated and with time smoothing.
 
-Create the phase diagram again, but this time with time step smoothing
+```
+terminal-life --width 400 --height 200 --rule b3s23 --activation sin --theme managua --ticks 200 --phase --stream \
+```
+
+
+<img src = "./tests/fixtures/example_2.png" />
+
+But it's usually much nicer to see it as an animation, raw RGBA values can be piped to ffmpeg to 
+create a webp.
 `terminal-life --width 500 --height 500 --rule b3s23 --activation sin --theme managua --ticks 100 --rate 3 --phase --out pd.png`
 
-Another diagram, this time with the `inferno` theme on the `gaussian` activation function
-`terminal-life --width 400 --height 400 --rule b3s23 --activation gaussian --theme inferno --ticks 300 --rate 3 --phase --out phase_3.png`
+<video src="./tests/fixtures/example_3.mp4" autoplay loop muted playsinline></video>
 
-I zoomed in on an interesting region in the webapp, and used the copy command as a template for this.
-This time in the berlin theme.
-`terminal-life --reset-random --width 300 --height 300 --rule b3s23 --activation gaussian --theme berlin --alpha 0.3 --beta 0.13 --rate 3 --ticks 150 --out example_5.png`
+<video src="./tests/fixtures/example_4.mp4" autoplay loop muted playsinline></video>
 
-We can also load the settings from an existing PNG instead of having to input manually every time. 
-Cell state is also saved in the PNG image data, but it is rounded so some information is lost on save
-`terminal-life --load ./example_5.png --log-json`
+<img src = "./tests/fixtures/example_5.png" />
 
+<video src="./tests/fixtures/example_6.mp4" controls autoplay loop muted playsinline></video>
 
-We can load this PNG and create webp animation for it using FFMPEG. The width & height has to be
-correct.
-```
-terminal-life --load example_5.png --stream --ticks 100 | \
-ffmpeg -f rawvideo -pixel_format rgba -video_size 300x300 -framerate 10 -i - -loop 0 waves.webp
-```
+<img src = "./tests/fixtures/example_7.png" />
 
-An intersting thing about that pattern is it slowly converges over time, if we tick the PNG for many
-ticks and generate a new animation this can be seen where the wave like behaviour synchronizes.
-`terminal-life --load example_5.png  --ticks 1000 --out example_6.png`
-
-Generate a new animation from the updated PNG.
-
-
-But enough with the activation functions, they are unsatisfying since it's another thing to add.
-lets generate some examples via larger than life rules. no activation function but with a larger
-neighborhood.
+<video src="./tests/fixtures/example_8.mp4" autoplay loop muted playsinline></video>
 
 
 
-Generate a phase diagram of the gaussian activation function on Conways rules. The phase window was 
-determined via web app exploration and the command copied from it.
 
-From exploring the phase diagram, I saw some interesting pseudo-wave behaviour at a certain part.
-After navigating to that region, and fixing the parameters I can generate a few animations. First,
-I'll save a PNG to make the next steps more succint.
-`
-terminal-life --reset-random --width 250 --height 250 --rule b3s23 --activation gaussian --theme managua --alpha 0.238 --beta=-0.130 --rate 5 --ticks 10 --out waves.png
-`
-Create an animation from the PNG for 100 ticks by piping raw RGBA frames into ffmpeg
-```
-terminal-life --load waves.png --stream --ticks 100 | \
-ffmpeg -f rawvideo -pixel_format rgba -video_size 250x250 -framerate 10 -i - -loop 0 waves.webp
-```
 
 ---
 

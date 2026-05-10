@@ -118,7 +118,7 @@ async function main() {
     life.stdin({
       "command": "reset-random",
       args: {
-        densityRange: [.999, .999],
+        densityRange: [.9995, .9995],
         valueRange: [0, 1],
       },
     });
