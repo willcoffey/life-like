@@ -76,16 +76,16 @@ flicker every frame. I've barely scratched exploring the the 262,144 possible ru
 
 Larger than life rules make for more visually interesting patterns. Here are some of my favorites,
 all generated using the command 
-<img src = "./tests/fixtures/r3m1s10-15b14-18.webp" />
-<img src = "./tests/fixtures/r5m1s23-32b25-30.webp" />
-<img src = "./tests/fixtures/r2m0s5-9b6-8.webp" />
+<img src = "./tests/fixtures/r3m1s10-15b14-18m.webp" />
+<img src = "./tests/fixtures/r5m1s23-32b25-30m.webp" />
+<img src = "./tests/fixtures/r2m0s5-9b6-8m.webp" />
 
 ----------------------------------------------------------------------------------------------------
 
 I can also render a phase diagram where the birth and survival ranges of the LtL rule are 
 interpolated over. The web interface lets you move and zoom a window into this phase diagram.
 This command renders the diagram with a fixed birth/survival range midpoint.
-<img src = "./tests/fixtures/r4m1s22-22b25-25_phase.png" />
+<img src = "./tests/fixtures/r4m1s22-22b25-25m_phase.png" />
 
 ----------------------------------------------------------------------------------------------------
 
@@ -113,25 +113,6 @@ initial random state.
 ```
 terminal-life --width 400 --height 200 --rule b3s23 --activation sin --theme managua --ticks 200 --phase --stream \
 ```
-
-
-<img src = "./tests/fixtures/example_2.png" />
-
-But it's usually much nicer to see it as an animation, raw RGBA values can be piped to ffmpeg to 
-create a webp.
-`terminal-life --width 500 --height 500 --rule b3s23 --activation sin --theme managua --ticks 100 --rate 3 --phase --out pd.png`
-
-<video src="./tests/fixtures/example_3.mp4" autoplay loop muted playsinline></video>
-
-<video src="./tests/fixtures/example_4.mp4" autoplay loop muted playsinline></video>
-
-<img src = "./tests/fixtures/example_5.png" />
-
-<video src="./tests/fixtures/example_6.mp4" controls autoplay loop muted playsinline></video>
-
-<img src = "./tests/fixtures/example_7.png" />
-
-<video src="./tests/fixtures/example_8.mp4" autoplay loop muted playsinline></video>
 
 ## The Algorithm
 The basic algorithm just uses life-like rules with state values treated as a probability between 

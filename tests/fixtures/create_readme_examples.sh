@@ -68,7 +68,7 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 # LtL favorite 1
 # ------------------------------------------------------------------------------
-RULE=r3m1s10-15b14-18
+RULE=r3m1s10-15b14-18m
 terminal-life --rule $RULE --reset-random \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
@@ -78,7 +78,7 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 # LtL favorite 2
 # ------------------------------------------------------------------------------
-RULE=r5m1s23-32b25-30
+RULE=r5m1s23-32b25-30m
 terminal-life --rule $RULE --reset-random \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
@@ -88,7 +88,7 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 # LtL favorite 3
 # ------------------------------------------------------------------------------
-RULE=r2m0s5-9b6-8
+RULE=r2m0s5-9b6-8m
 terminal-life --rule $RULE --reset-random \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
@@ -98,7 +98,7 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 # LtL phase diagram — size-1 ranges make the fixed midpoint explicit
 # ------------------------------------------------------------------------------
-RULE=r4m1s22-22b25-25
+RULE=r4m1s22-22b25-25m
 terminal-life --rule $RULE --reset-random --phase \
   --width $WIDTH --height $HEIGHT --ticks $TICKS \
   --out "${RULE}_phase.png"
