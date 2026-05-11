@@ -211,7 +211,7 @@ class LifeLikeElement extends HTMLElement {
     //vlk.bindKeys("<s>", "make-symmetric", "normal");
     vlk.bindKeys("<r><r>", "reset-random", "normal");
     vlk.bindKeys("<r><s>", "reset-random", "normal", {
-      densityRange: [.9999, .9999],
+      densityRange: [.0001, .0001],
       valueRange: [0, 1],
     });
     vlk.bindKeys("<x>", "reset", "normal");

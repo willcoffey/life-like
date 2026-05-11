@@ -1,4 +1,12 @@
 # Sun May 10 03:37:56 PM EDT 2026
+ --random-near-certain or range specification
+ grid search for demo patterns
+ phase diagram for LtL rules
+command log replay
+
+
+---
+
 Re-establishing current priorities
  - README.md
  - JSON command replay?

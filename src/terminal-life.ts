@@ -49,8 +49,13 @@ Life-Like Terminal
                     LtL: "r5m1s34-58b34-45m" where that means radius 5 middle included survive
                     between 34 and 58, birth between 34 and 45, use a moore neighborhood. "d" for
                     disc neighborhood also supported.
-  --reset-random    Seed the grid with random values from a deterministic PRNG
-  --reset-sparse    Seed the grid with random values with a low density, most cells dead
+  --reset-random [RANGE]
+                    Seed the grid with random values from a deterministic PRNG.
+                    Optional RANGE has the form "density,value" where each side
+                    is "min:max" or a single number "n" (interpreted as [n, n]).
+                    Density controls how often a cell is alive; value controls
+                    its magnitude. Defaults to "0.5,0:1" if omitted.
+                    Example: --reset-random=0.0005,0:1  (sparse seeding)
 
     
 =================================== Examples ==================================
@@ -91,6 +96,7 @@ async function main() {
     theme: true,
     rule: true,
     "log-json": true,
+    "reset-random": true,
   });
   if (opts.flags.h || opts.flags.help) return printHelp();
 
@@ -115,14 +121,13 @@ async function main() {
   }
 
   if (verbose) console.log(life.grid);
-  if (opts.flags["reset-random"]) life.stdin({ "command": "reset-random" });
-  if (opts.flags["reset-sparse"]) {
+  if (opts.flags["reset-random"]) {
+    const range = opts.options["reset-random"]
+      ? parseRangePair(opts.options["reset-random"])
+      : undefined;
     life.stdin({
       "command": "reset-random",
-      args: {
-        densityRange: [.9995, .9995],
-        valueRange: [0, 1],
-      },
+      args: range && { densityRange: range.a, valueRange: range.b },
     });
   }
 
@@ -195,14 +200,16 @@ function parseGridFromArguments(args: CommandLineOptions): Partial<Grid> {
 
   /** Validate the string props - phase diagram range, validator function */
   if (options.phase) {
-    const phaseRange = parsePhaseRange(options.phase);
-    if (phaseRange) {
+    const phaseRange = parseRangePair(options.phase);
+    if (phaseRange?.b) {
       grid.phaseDiagram = {
         type: "activation",
-        x: phaseRange.alpha,
-        y: phaseRange.beta,
+        x: phaseRange.a,
+        y: phaseRange.b,
       };
       grid.mode = "PhaseDiagram";
+    } else if (phaseRange) {
+      throw `Error: --phase requires two ranges (alpha,beta)`;
     }
   } else if (flags.phase && grid.activation) {
     /** phase was specified without a range, use activation default */
@@ -402,36 +409,31 @@ function getStateString(grid: Grid): string {
 }
 
 /**
- * Takes in the phase diagram range specified via console in the format
- * --phase 0:1,3:4
+ * Parses one or two ranges in the form "aSpec[,bSpec]", where each spec is
+ * either "min:max" or a single number "n" (interpreted as [n, n]). The second
+ * range is optional; callers decide how to handle its absence.
  *
- * where this parses to an alpha and beta min/max of 0,1 and 3,4 respectively
- *
- * input string is just the '0:1,3:4'
+ *   "0:1,3:4" -> { a: [0, 1], b: [3, 4] }
+ *   "0,1:2"   -> { a: [0, 0], b: [1, 2] }
+ *   "0,2"     -> { a: [0, 0], b: [2, 2] }
+ *   "0.999"   -> { a: [0.999, 0.999] }
  */
-function parsePhaseRange(
+function parseRangePair(
   input: string,
-): { alpha: [number, number]; beta: [number, number] } | undefined {
-  const [alphaString, betaString] = input.split(",");
-  if (!alphaString || !betaString) throw `Error: invalid phase range specified`;
+): { a: [number, number]; b?: [number, number] } | undefined {
+  const [aPart, bPart] = input.split(",");
+  const a = parseRange(aPart);
+  if (!a) return undefined;
+  if (bPart === undefined) return { a };
+  const b = parseRange(bPart);
+  return b ? { a, b } : undefined;
+}
 
-  const [alphaMinString, alphaMaxString] = alphaString.split(":");
-  const [betaMinString, betaMaxString] = betaString.split(":");
-
-  const alphaMin = Number(alphaMinString);
-  const alphaMax = Number(alphaMaxString);
-  const betaMin = Number(betaMinString);
-  const betaMax = Number(betaMaxString);
-
-  if (!Number.isFinite(alphaMin)) return undefined;
-  if (!Number.isFinite(alphaMax)) return undefined;
-  if (!Number.isFinite(betaMin)) return undefined;
-  if (!Number.isFinite(betaMax)) return undefined;
-
-  return {
-    alpha: [alphaMin, alphaMax],
-    beta: [betaMin, betaMax],
-  };
+function parseRange(input: string): [number, number] | undefined {
+  const [minStr, maxStr = minStr] = input.split(":");
+  const min = Number(minStr);
+  const max = Number(maxStr);
+  return Number.isFinite(min) && Number.isFinite(max) ? [min, max] : undefined;
 }
 
 main();

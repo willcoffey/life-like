@@ -5,10 +5,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-WIDTH=120
-HEIGHT=240
-TICKS=5
-FUTURE_TICKS=10  # README targets 10000 for the wave-synchronization example
+WIDTH=80
+HEIGHT=80
+TICKS=30
+FUTURE_TICKS=10   # README targets 10000 for the wave-synchronization example
+SEED_TICKS=150    # how long to settle the sparse-seeded waves state before snapshotting
 
 
 # ==============================================================================
@@ -29,10 +30,10 @@ terminal-life --rule $RULE --reset-random \
 # Game of Life animation, initialized with "almost alive" states
 # ------------------------------------------------------------------------------
 RULE=b3s23
-terminal-life --rule $RULE --reset-random \
-  --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
+terminal-life --rule $RULE --reset-random .15,.99999 \
+--theme magma --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
-    -framerate 10 -i - -loop 0 -y gol_animation.webp
+    -framerate 5 -i - -loop 0 -y gol_animation.webp
 
 
 # ------------------------------------------------------------------------------
@@ -68,7 +69,7 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 # LtL favorite 1
 # ------------------------------------------------------------------------------
-RULE=r3m1s10-15b14-18m
+RULE=r5m0s35-107b10-27m
 terminal-life --rule $RULE --reset-random \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
@@ -130,21 +131,24 @@ terminal-life --rule $RULE --activation sin --theme managua --phase --rate 3 \
 
 
 # ------------------------------------------------------------------------------
-# Wave synchronization — initial animation, advance state, animate again
+# Wave synchronization — Conway + sin + sparse seed produces traveling waves.
+# Seed → settle → animate → advance FUTURE_TICKS → animate again to show
+# patterns synchronizing over time.
 # ------------------------------------------------------------------------------
-RULE=b245s58
+RULE=b3s23
 
-terminal-life --rule $RULE --reset-random \
-  --width $WIDTH --height $HEIGHT --ticks 0 \
-  --out "${RULE}_state_initial.png"
+terminal-life --rule $RULE --reset-random .999 --activation sin --theme managua \
+  --alpha=-1.35 --beta 3.92 --rate 3 \
+  --width $WIDTH --height $HEIGHT --ticks $SEED_TICKS \
+  --out waves_initial.png
 
-terminal-life --load "${RULE}_state_initial.png" --ticks $TICKS --stream \
+terminal-life --load waves_initial.png --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
-    -framerate 10 -i - -loop 0 -y "${RULE}_initial.webp"
+    -framerate 10 -i - -loop 0 -y waves_initial.webp
 
-terminal-life --load "${RULE}_state_initial.png" --ticks $FUTURE_TICKS \
-  --out "${RULE}_state_future.png"
+terminal-life --load waves_initial.png --ticks $FUTURE_TICKS \
+  --out waves_future.png
 
-terminal-life --load "${RULE}_state_future.png" --ticks $TICKS --stream \
+terminal-life --load waves_future.png --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
-    -framerate 10 -i - -loop 0 -y "${RULE}_future.webp"
+    -framerate 10 -i - -loop 0 -y waves_future.webp
