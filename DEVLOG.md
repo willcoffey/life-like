@@ -2,6 +2,8 @@
 Re-establishing current priorities
  - README.md
  - JSON command replay?
+ - explicit log-json behavriour detailed in terminal-life help
+i.e. does it log before or after ticks?
 
 # Mon May  4 04:24:43 PM EDT 2026
 Too much hacking, cleaning and general coding without revisiting priorities.

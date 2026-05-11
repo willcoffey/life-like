@@ -1,36 +1,3 @@
-<!--
-REFACTOR NOTES — delete this block before publish.
-
-STRUCTURAL MOVES (no content change):
-- Flattened all section headings to `##` (was a mix of `##` and `###` for peer sections).
-- Promoted "Examples" out from under Installation to a top-level section after Installation.
-- Removed the `### Clone the Repo` subheading; its body now sits directly under `## Installation`.
-- Renamed "Usage" → "Parameter Reference" and moved it to the bottom (was above Web App / Terminal Utility).
-- Trailing stub keywords (load-and-tick, log-json, grid search, ffmpeg) kept where they are, adjacent to Terminal Utility — preserved as a TODO list for you to flesh out.
-
-NON-MOVE EDITS:
-- Removed stale `@TODO - Progress on terminal command` banner that sat above the title.
-- Typo fixes:
-  - "continous" → "continuous" (2 instances)
-  - "non-contigous" → "non-contiguous"
-  - "decods" → "decodes"
-  - "becoma" → "become"
-  - "Heres" → "Here's"
-- Grammar:
-  - "use convolution kernel to get" → "use a convolution kernel to get"
-  - "states is therefore is a poisson binomial" → "states is therefore a Poisson binomial" (dropped duplicate "is")
-- Terminology / capitalization:
-  - "poisson binomial" → "Poisson binomial" (proper noun, 2 instances)
-  - "binomial poisson distributions" → "Poisson binomial distributions" (term was inverted)
-
-LEFT UNTOUCHED — your remaining work:
-- Captionless image/video block in Examples (8 media tags with no surrounding prose or commands).
-- Stub keywords block under Terminal Utility (`load-and-tick`, `log-json and load + log-json`, `grid search`, `ffmpeg`).
-- example_1 prose says "100x100 png" but the command produces 400x200.
-- example_2 command has a trailing backslash `\` outside any multi-line shell context.
-- The "raw RGBA values can be piped to ffmpeg" sentence is followed by a command that writes a PNG, not a piped stream — wording or command needs to match.
--->
-
 # *Almost* Life-Like
 <p class="subtitle">A Probabilistic extension of Conways Game of Life and other life-like automata</p>
 <img src="tests/fixtures/banner.png" />
@@ -65,8 +32,8 @@ git submodule update --init
 # Run directly
 deno run --allow-read --allow-write ./src/terminal-life.ts --help
 
-# Install globally
-deno install -g --allow-read --allow-write ./src/terminal-life.ts
+# Install globally (--config is needed for pngjs dependency)
+deno install -g --config ./deno.json --allow-read --allow-write ./src/terminal-life.ts
 ```
 
 ### Run using tsx
@@ -79,16 +46,69 @@ npx tsx src/terminal-life.ts --help
 A few example commands to demonstrate the terminal app. Paramters are generally discovered in web 
 app which can output command strings for further tweaking via terminal-life.
 
-Create a 100x100 png with some initial noise, tick it 100 times and save as `example_1.png`. 
-The rule is one I know to be chaotic. No activation function.
+None of these first examples use an activation function or time smoothing paramter. To me this makes
+them the most satisfying since they all collapse back their identical life-like or larger-than-life 
+behaviour on discrete states.
+
+Run a known chaotic rule with initial noise on a 200x100 grid for 100 ticks and save the result as
+`example_1.png`
 ```
-terminal-life --rule b3456s3456 --reset-random --width 400 --height 200 --ticks 100 --out example_1.png
+terminal-life --rule b3456s3456 --reset-random --width 200 --height 100 --ticks 100 --out example_1.png
 ```
 <img src = "./tests/fixtures/example_1.png" />
 
-Create a phase diagram for the sin activation function for Conways. Note that we don't need to
-initialize the grid to any values since some parameters of the activation function make life from
-0 states. Here's another phase diagram, but animated and with time smoothing.
+----------------------------------------------------------------------------------------------------
+
+It's easy to create animations by streaming raw RGBA frames to FFMPEG. This is Game of Life 
+initialized with *almost* alive states. GoL eventually becomes uniform blobs without an activation
+function.
+<img src = "./tests/fixtures/gol_animation.webp" />
+
+----------------------------------------------------------------------------------------------------
+
+Most of the standard life-like rules I've looked at look something like the 3 examples below and 
+flicker every frame. I've barely scratched exploring the the 262,144 possible rules.
+<img src = "./tests/fixtures/b135s23.webp" />
+<img src = "./tests/fixtures/b27s368.webp" />
+<img src = "./tests/fixtures/b46s2358.webp" />
+
+----------------------------------------------------------------------------------------------------
+
+Larger than life rules make for more visually interesting patterns. Here are some of my favorites,
+all generated using the command 
+<img src = "./tests/fixtures/r3m1s10-15b14-18.webp" />
+<img src = "./tests/fixtures/r5m1s23-32b25-30.webp" />
+<img src = "./tests/fixtures/r2m0s5-9b6-8.webp" />
+
+----------------------------------------------------------------------------------------------------
+
+I can also render a phase diagram where the birth and survival ranges of the LtL rule are 
+interpolated over. The web interface lets you move and zoom a window into this phase diagram.
+This command renders the diagram with a fixed birth/survival range midpoint.
+<img src = "./tests/fixtures/r4m1s22-22b25-25_phase.png" />
+
+----------------------------------------------------------------------------------------------------
+
+The rest of these examples use time smoothing, an activation function, or both. I like the visual 
+patterns more and it's much easier to interpolate over the two activation function parameters but
+I also find the math less satisfying. Time smoothing is also usefule for reducing or eliminationg
+the flickering of the standard rules.
+
+Heres a phase diagram of conways using the sin activation function. Then the same thing with time
+smoothing set to 3.
+<img src = "./tests/fixtures/b3s23_sin.webp" />
+<img src = "./tests/fixtures/b3s23_sin_smoothed.webp" />
+
+----------------------------------------------------------------------------------------------------
+
+Zooming in, I found these waves interesting. 
+The commands below create an intial state, a brief animation, advance the state by 10,000 ticks, 
+then create another animation. This shows the waves slowly synchronizing over time from theire 
+initial random state.
+<img src = "./tests/fixtures/b245s58_initial.webp" />
+<img src = "./tests/fixtures/b245s58_future.webp" />
+
+----------------------------------------------------------------------------------------------------
 
 ```
 terminal-life --width 400 --height 200 --rule b3s23 --activation sin --theme managua --ticks 200 --phase --stream \
@@ -135,7 +155,7 @@ for(let i=0;i<odds.length;i++) {
     state += cellState * applySurviveRule(i) * odds[i]
     // Odds this cell is dead, but would become alive for this state
     state += (1-cellState) * applyBirthRule(i) * odds[i]
-}
+e
 ```
 `odds` is an array 0..N where the value at each index is the probability of that number of neighbors
 being alive. It is computed using the direct convolution method for solving Poisson binomial 
@@ -165,39 +185,38 @@ server targeting `index.html` via `deno task dev`
 ## Terminal Utility
 The terminal utility can be used to load, generate, and run the automata as well
 as pipe raw data for use in pipelines with `ffmpeg` or other tools. For 
-additional details see `terminal-life -h`.
+additional details see `terminal-life -h` and the Examples section for basic 
+usage.
 
-To create a basic PNG
-`terminal-life --width 100 --height 100 --rule b3s23 --reset-random --out conway.png --ticks 10`
+For loading PNGs, cell state is loaded from the image data but the round trip is lossy. Only
+about 8 bits can be recovered from the RGBA values per cell. Additionally, if sharing PNGS some
+websites or messengers will strip the `tEXt` blocks which contain the grid paramters. Either ensure
+metadata isn't stripped or share seperatly with the `--log-json` option.
 
-which runs conways with a deterministic random seed. It's not very interesting since conways just
-collapses to a blob of the same value. A more interesting rule is `b3456s3456` which produces 
-flickering chaos.
-`terminal-life --width 100 --height 100 --rule b3456s3456 --reset-random --out chaos.png --ticks 50`
 
----
+The terminal utility is particulary good for LLM Agent usage and long running
+scripts. There are more examples in the scripts directory of combining shell
+scripts with the terminal utility to perform grid searches in parrallel. For
+LLM usage I have had success with these prompts on Claude Opus 4.7. Both in 
+Claude code and simply in the Claud.ai web app sandbox.
 
-load-and-tick
-
-log-json and load + log-json
-
-grid search
-
-ffmpeg
+@TODO
 
 ## Parameter Reference
 Most options can be discovered through the `terminal -h` help or via the web app interface. However
 it is worth noting the parameters that this is meant to explore
 
 - **Rules** : rules are specified in one of two formats. Basic life-like rules can be specified as
-a string of the form `b2s23` where the numbers represent what values cause a cell to become alive or 
-survive. They can be non-contiguous such as `b157s23`. The second format is a larger than life format
-with more options. `b2s23` would be specified as `r1m0s2-3b3-3m` which decodes as
+a string of the form `b2s23` where the numbers represent how many alive neighors cause a cell to 
+become alive or survive. They can be non-contiguous such as `b157s23`. The second format is a larger 
+than life format with more options. `b2s23` would be specified as `r1m0s2-3b3-3m` which decodes as
 
  - `r1` = radius 1 neighborhood
  - `m0` = middle cell excluded from neighborhood
  - `s2-3` = survive between 2 and 3 neighbors alive, inclusive
  - `b3-3` = become alive for values 3-3. note that you still need to specify a range for a single value
+ - `m` = A moore nieghborhood, i.e. a square with side length = 2r + 1. The other option is `d` for
+        disc.
 
 - **Activation Function** : Available activation functions can be seen in the `shapers.ts` file. If
 a new function is added to `shapers.ts` it will become available via toggling in the web app or via
@@ -209,4 +228,34 @@ finding patterns.
 value besides 1 then discrete 0 1 values will become continuous. i.e. no classic conways.
 
 
-[0]: https://deno.com/
+## Whats Next?
+Honestly I imagine it will be a while before I put more work into this repo. I'm much more 
+interested in reversible automata and have some ideas that have more practical potential. This 
+project was mostly just because I wasn't satisfied with other continous extensions. I wanted 
+something that respected the underlying discrete rules, but provided additional continous state. 
+That said the next things I would prioritize, in no particular order, would be
+
+ - Better parameter searching. Perhaps latin hypercube sampling. Move away from the 2D phase 
+diagrams which are neat, but arbitrarily force 2D paramter searches. 
+
+ - Optimization. The PMF calculation on larger neighborhoods is very low hanging fruit, tons of 
+duplicated work because of neighborhood overlap. GPU shaders would be a massive performance 
+improvment but wouldn lose determinism across machines. A perfect use case for using the CPU 
+version as an oracle for an agent to create a GPU version. 
+
+ - Fractional rules. This model naturally allows for rules that are 50% Conways and 50% Diomeba and
+any other combination of rules. In practice this would become rules where birth and survive values
+can be continous values.
+
+ - PNG Support in the web app. Would be fairly simple to add, but I would want to be careful about
+codebase splitting. Really `terminal-life` and the web app should share the same PNG library and 
+functions. This may mean rolling my own PNG tool, like the hand rolled `tEXt` blocks so code can
+be shared between terminal and browser.
+
+ - Command recording. In principle `core.ts` can record all input commands for deterministic replay
+by either app or terminal utility. The only update needed would be to combine all the `tick` 
+commands from playback into a `tick N` command for all consecutive `tick` commands. In most cases it
+should fit into `tEXt` blocks and give a means to verify hashes.
+
+ - Making state complex and switching to probability amplitudes would the most interesting further
+extension in my opinion. 

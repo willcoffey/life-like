@@ -41,6 +41,9 @@ terminal-life --rule b3456s3456 --reset-random --width 400 --height 200 --ticks 
 
 <img src = "./tests/fixtures/example_1.png" />
 
+We can also load the settings used to generate a PNG if it still has it's tEXt data. 
+`terminal-life --load ./chaos.png --log-json`
+
 Create a phase diagram for the sin activation function for Conways. Note that we don't need to
 initialize the grid to any values since some parameters of the activation function make life from
 0 states. Heres another phase diagram, but animated and with time smoothing.
