@@ -27,8 +27,8 @@ const DEFAULT_GRID: Optional<Grid, "cache" | "cells"> = {
     type: "rule",
     lowB: 0,
     lowS: 0,
-    x: [0, 80],
-    y: [0, 80],
+    x: [0, 0],
+    y: [0, 0],
   },
   theme: "viridis",
   changeRate: 1,
@@ -206,21 +206,20 @@ export class LifeLike {
         console.log(rule);
         throw "adsad";
       }
-
-      /**
-       * If in Fixed mode, copy the buffered edges to the opposite sides to make updates flow
-       * from one side of the grid to the opposite side. A toroidal topology.
-       */
-      if (true || grid.mode === "Fixed") {
-        LifeLike.copyBufferedEdges(
-          nextState,
-          grid.width,
-          grid.height,
-          grid.cache.parsedRule.radius,
-        );
-      }
     }
 
+    /**
+     * If in Fixed mode, copy the buffered edges to the opposite sides to make updates flow
+     * from one side of the grid to the opposite side. A toroidal topology.
+     */
+    if (true || grid.mode === "Fixed") {
+      LifeLike.copyBufferedEdges(
+        nextState,
+        grid.width,
+        grid.height,
+        grid.cache.parsedRule.radius,
+      );
+    }
     grid.tick++;
     return nextState;
   }
@@ -272,7 +271,7 @@ export class LifeLike {
         }
         const sRange = LifeLike.createRange(lowS, ySize);
         const bRange = LifeLike.createRange(lowB, xSize);
-        const rule = Rules.largerThanLife.bind(null, sRange, bRange, false);
+        const rule = Rules.largerThanLife.bind(null, sRange, bRange, grid.cache.parsedRule.middle);
         return [rule, grid.alpha, grid.beta];
         break;
     }
@@ -654,13 +653,12 @@ const Controls = {
     switch (diagram) {
       case "rule":
         if (grid.cache.parsedRule.type != "LtL") throw "Cannot interpolate non-LtL rules";
-        const nieghborCount = grid.cache.parsedRule.radius;
         const diagram: PhaseDiagram = {
           type: "rule",
-          lowS: Math.round(grid.cache.neighborhood.length / 2),
-          lowB: Math.round(grid.cache.neighborhood.length / 2),
-          x: [0, grid.cache.neighborhood.length],
-          y: [0, grid.cache.neighborhood.length],
+          lowS: grid.cache.parsedRule.sRange[0],
+          lowB: grid.cache.parsedRule.bRange[0],
+          x: [0, grid.cache.neighborhood.length - grid.cache.parsedRule.bRange[0]],
+          y: [0, grid.cache.neighborhood.length - grid.cache.parsedRule.sRange[0]],
         };
         grid.phaseDiagram = diagram;
         break;
@@ -681,12 +679,13 @@ const Controls = {
   "reset-random"(grid, { densityRange, valueRange } = {}) {
     if (!densityRange) densityRange = [.5, .5];
     if (!valueRange) valueRange = [0, 1];
+    const fixedValue = valueRange[0] === valueRange[1];
     grid.cells = LifeLike.createBufferedArray(grid);
     for (const [position, x, y] of LifeLike.cellIterator(grid)) {
       const density = LifeLike.linearInterpolate(grid.width, x, densityRange[0], densityRange[1]);
       const min = LifeLike.linearInterpolate(grid.height, y, valueRange[0], valueRange[1]);
       if (Random() < density) {
-        grid.cells[position] = Random() * (1 - min) + min;
+        grid.cells[position] = fixedValue ? min : Random() * (1 - min) + min;
       } else {
         grid.cells[position] = 0;
       }
@@ -782,9 +781,8 @@ const Controls = {
       grid.phaseDiagram.y = Shapers[grid.activation].diagram.beta;
     } else {
       /** For birth and survival the diagram is 0 - nieghborhood size */
-      const nieghborCount = grid.cache.parsedRule.radius;
-      grid.phaseDiagram.x = [0, grid.cache.neighborhood.length];
-      grid.phaseDiagram.y = [0, grid.cache.neighborhood.length];
+      grid.phaseDiagram.x = [0, grid.cache.neighborhood.length - grid.phaseDiagram.lowB];
+      grid.phaseDiagram.y = [0, grid.cache.neighborhood.length - grid.phaseDiagram.lowS];
     }
   },
 

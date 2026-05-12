@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Random Life-Like Gallery</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    background: #111;
+    color: #ddd;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  header {
+    position: sticky;
+    top: 0;
+    background: #111;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #333;
+    z-index: 10;
+  }
+  button {
+    background: #222;
+    color: #ddd;
+    border: 1px solid #444;
+    padding: 6px 12px;
+    font: inherit;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: #333; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  #status { margin-left: auto; }
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 4px;
+    padding: 4px;
+  }
+  .cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: #000;
+    overflow: hidden;
+  }
+  .cell video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+  .cell .label {
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
+    font-size: 10px;
+    background: rgba(0,0,0,0.6);
+    padding: 1px 4px;
+    pointer-events: none;
+  }
+  .cell .missing {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <button id="prev">&larr; Prev</button>
+  <button id="next">Next &rarr;</button>
+  <span id="status">loading rules…</span>
+</header>
+<div id="grid"></div>
+<script>
+const PER_PAGE = 45; // 9 cols x 5 rows
+let rules = [];
+let page = 0;
+
+const grid = document.getElementById('grid');
+const prevBtn = document.getElementById('prev');
+const nextBtn = document.getElementById('next');
+const status = document.getElementById('status');
+
+function render() {
+  grid.innerHTML = '';
+  const start = page * PER_PAGE;
+  const slice = rules.slice(start, start + PER_PAGE);
+  for (const rule of slice) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const video = document.createElement('video');
+    video.src = `${rule}.mp4`;
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.addEventListener('error', () => {
+      cell.innerHTML = `<div class="missing">missing</div><div class="label">${rule}</div>`;
+    });
+    cell.appendChild(video);
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = rule;
+    cell.appendChild(label);
+    grid.appendChild(cell);
+  }
+  const totalPages = Math.max(1, Math.ceil(rules.length / PER_PAGE));
+  status.textContent = `page ${page + 1} / ${totalPages}  (rules ${start + 1}–${Math.min(start + PER_PAGE, rules.length)} of ${rules.length})`;
+  prevBtn.disabled = page === 0;
+  nextBtn.disabled = page >= totalPages - 1;
+}
+
+prevBtn.addEventListener('click', () => { if (page > 0) { page--; render(); window.scrollTo(0, 0); } });
+nextBtn.addEventListener('click', () => {
+  const totalPages = Math.ceil(rules.length / PER_PAGE);
+  if (page < totalPages - 1) { page++; render(); window.scrollTo(0, 0); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') prevBtn.click();
+  else if (e.key === 'ArrowRight') nextBtn.click();
+});
+
+fetch('random_rules.txt')
+  .then(r => r.text())
+  .then(t => {
+    rules = t.split('\n').map(s => s.trim()).filter(Boolean);
+    render();
+  })
+  .catch(e => { status.textContent = `failed to load rules: ${e}`; });
+</script>
+</body>
+</html>

@@ -38,8 +38,13 @@ Life-Like Terminal
   --beta N          Second shaping parameter for the activation function.
   --rate N          Smoothing factor on per-tick updates; higher values apply 
                     smaller per-cell changes. 1 matches classic Conway.
-  --phase RANGE     PhaseDiagram mode: linearly interpolate alpha and beta across the grid using 
+  --phase [RANGE]   PhaseDiagram mode: linearly interpolate alpha and beta across the grid using
                     the given min:max ranges. Overrides fixed --alpha / --beta values.
+  --rule-phase [RANGE]
+                    PhaseDiagram mode for LtL rules: sweep birth-window size across X and
+                    survival-window size across Y. Anchored at the current --rule's
+                    bRange[0] / sRange[0]. Format: bMin:bMax,sMin:sMax. Omit the value to
+                    default to [0, n] on both axes, where n is the neighborhood size.
   --activation NAME Activation function to use (e.g. gaussian, sin, sigmoid). See shapers.ts
   --theme           Name of a palette. magma, inferno, plasma, viridis, cividis, turbo, berlin,
                      managua, vanimo
@@ -71,6 +76,9 @@ Life-Like Terminal
 
   # Render a phase diagram by sweeping alpha and beta
   terminal-life --width 400 --height 400 --rate 5 --activation gaussian --phase=-0.470:0.668,-0.319:0.319 --ticks 10 --out phase.png
+
+  # Render a rule phase diagram: birth window 0-40 across X, survival window 0-40 across Y
+  terminal-life --width 400 --height 400 --rule r5m0s20-20b20-20m --rule-phase=0:40,0:40 --ticks 10 --out rule-phase.png
 `);
 }
 
@@ -92,6 +100,7 @@ async function main() {
     beta: true,
     rate: true,
     phase: true,
+    "rule-phase": true,
     activation: true,
     theme: true,
     rule: true,
@@ -120,7 +129,26 @@ async function main() {
     life = new LifeLike(inputGrid);
   }
 
-  if (verbose) console.log(life.grid);
+  if (opts.options["rule-phase"] || opts.flags["rule-phase"]) {
+    life.stdin({ command: "set-diagram", args: "rule" });
+    if (opts.options["rule-phase"]) {
+      const ranges = parseRangePair(opts.options["rule-phase"]);
+      if (!ranges?.b) {
+        throw `Error: --rule-phase requires two ranges (bMin:bMax,sMin:sMax)`;
+      }
+      const pd = life.grid.phaseDiagram;
+      if (pd.type === "rule") {
+        pd.x = ranges.a;
+        pd.y = ranges.b;
+      }
+    }
+    life.grid.mode = "PhaseDiagram";
+  }
+
+  if (verbose) {
+    console.log(life.grid);
+    console.log(`Neighborhood size: ${life.grid.cache.neighborhood.length}`);
+  }
   if (opts.flags["reset-random"]) {
     const range = opts.options["reset-random"]
       ? parseRangePair(opts.options["reset-random"])

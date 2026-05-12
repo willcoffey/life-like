@@ -1,4 +1,7 @@
 *.sw?
 node_modules/
 .vite/
+*.webp
+*.png
+*.mp4
 

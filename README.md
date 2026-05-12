@@ -1,6 +1,6 @@
 # *Almost* Life-Like
 <p class="subtitle">A Probabilistic extension of Conways Game of Life and other life-like automata</p>
-<img src="tests/fixtures/banner.png" />
+<img src="tests/fixtures/readme/banner.png" />
 
 ## About
 This project is an exploration of extending life-like automata to continous states by interpreting
@@ -55,71 +55,54 @@ Run a known chaotic rule with initial noise on a 200x100 grid for 100 ticks and 
 ```
 terminal-life --rule b3456s3456 --reset-random --width 200 --height 100 --ticks 100 --out example_1.png
 ```
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/example_1.png" width="80" height="80" image-rendering="pixelated"/>
-</svg>
+<img src="./tests/fixtures/readme/example_1.png" />
 
 ----------------------------------------------------------------------------------------------------
 
 It's easy to create animations by streaming raw RGBA frames to FFMPEG. This is Game of Life 
 initialized with *almost* alive states. GoL eventually becomes uniform blobs without an activation
 function.
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/gol_animation.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
+<img src="./tests/fixtures/readme/gol_animation.webp" />
 
 ----------------------------------------------------------------------------------------------------
 
-Most of the standard life-like rules I've looked at look something like the 3 examples below and 
-flicker every frame. I've barely scratched exploring the the 262,144 possible rules.
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/b135s23.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/b27s368.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/b46s2358.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
+A few patterns of I've come across that I've liked. Most patterns are similar to those below if they
+don't find a constant value. Take a look at the gallery @TODO here for an idea of how random 
+patterns turn out.
+
+<img src="./tests/fixtures/readme/b01s78.webp" />
+<img src="./tests/fixtures/readme/b4567s01457.webp" />
+<img src="./tests/fixtures/readme/b38s12347.webp" />
+<img src="./tests/fixtures/readme/b0237s2345.webp" />
 
 ----------------------------------------------------------------------------------------------------
 
-Larger than life rules make for more visually interesting patterns. Here are some of my favorites,
-all generated using the command 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/r3m1s10-15b14-18m.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/r5m1s23-32b25-30m.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/r2m0s5-9b6-8m.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
+Larger than life rules have some more variety, but also tend towards similar patterns. Here are a
+few examples I've liked
+
+<img src="./tests/fixtures/readme/r5m0s35-107b10-27m.webp" />
+<img src="./tests/fixtures/readme/r5m1s23-32b25-30m.webp" />
+<img src="./tests/fixtures/readme/r2m0s5-9b6-8m.webp" />
+<img src="./tests/fixtures/readme/r5m0s40-87b0-31m.webp" />
 
 ----------------------------------------------------------------------------------------------------
 
-I can also render a phase diagram where the birth and survival ranges of the LtL rule are 
-interpolated over. The web interface lets you move and zoom a window into this phase diagram.
-This command renders the diagram with a fixed birth/survival range midpoint.
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/r4m1s22-22b25-25m_phase.png" width="80" height="80" image-rendering="pixelated"/>
-</svg>
+I can also render LtL rules as a phase diagram. The minimum value for survive and birth is fixed,
+and the size of the range is interpolated over x and y. 
+
+<img src="./tests/fixtures/readme/r4m1s22-22b25-25m_phase.png" />
 
 ----------------------------------------------------------------------------------------------------
 
 The rest of these examples use time smoothing, an activation function, or both. I like the visual 
 patterns more and it's much easier to interpolate over the two activation function parameters but
-I also find the math less satisfying. Time smoothing is also usefule for reducing or eliminationg
+I also find the math less satisfying. Time smoothing is also useful for reducing or eliminationg
 the flickering of the standard rules.
 
 Heres a phase diagram of conways using the sin activation function. Then the same thing with time
 smoothing set to 3.
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/b3s23_sin.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/b3s23_sin_smoothed.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
+<img src="./tests/fixtures/readme/b3s23_sin.webp" />
+<img src="./tests/fixtures/readme/b3s23_sin_smoothed.webp" />
 
 ----------------------------------------------------------------------------------------------------
 
@@ -127,12 +110,8 @@ Zooming in, I found these waves interesting.
 The commands below create an intial state, a brief animation, advance the state by 10,000 ticks, 
 then create another animation. This shows the waves slowly synchronizing over time from theire 
 initial random state.
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/waves_initial.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="320" height="320">
-  <image href="./tests/fixtures/waves_future.webp" width="80" height="80" image-rendering="pixelated"/>
-</svg>
+<img src="./tests/fixtures/readme/waves_initial.webp" />
+<img src="./tests/fixtures/readme/waves_future.webp" />
 
 ----------------------------------------------------------------------------------------------------
 

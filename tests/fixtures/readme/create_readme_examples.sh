@@ -5,9 +5,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-WIDTH=80
-HEIGHT=80
-TICKS=30
+WIDTH=150
+HEIGHT=150
+TICKS=100
 FUTURE_TICKS=10   # README targets 10000 for the wave-synchronization example
 SEED_TICKS=150    # how long to settle the sparse-seeded waves state before snapshotting
 
@@ -30,16 +30,25 @@ terminal-life --rule $RULE --reset-random \
 # Game of Life animation, initialized with "almost alive" states
 # ------------------------------------------------------------------------------
 RULE=b3s23
-terminal-life --rule $RULE --reset-random .15,.99999 \
+terminal-life --rule $RULE --reset-random .15,.9999999999999999 \
 --theme magma --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
     -framerate 5 -i - -loop 0 -y gol_animation.webp
 
 
+#
+# Animated chaos
+#
+RULE=b01s78
+terminal-life --rule $RULE --reset-random \
+  --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
+    -framerate 10 -i - -loop 0 -y "${RULE}.webp"
+
 # ------------------------------------------------------------------------------
-# Flicker example 1 — standard life-like rule
+# Faint curves from dying high life value
 # ------------------------------------------------------------------------------
-RULE=b135s23
+RULE=b4567s01457
 terminal-life --rule $RULE --reset-random \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
@@ -47,9 +56,9 @@ terminal-life --rule $RULE --reset-random \
 
 
 # ------------------------------------------------------------------------------
-# Flicker example 2 — standard life-like rule
+# 
 # ------------------------------------------------------------------------------
-RULE=b27s368
+RULE=b38s12347
 terminal-life --rule $RULE --reset-random \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
@@ -59,8 +68,8 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 # Flicker example 3 — standard life-like rule
 # ------------------------------------------------------------------------------
-RULE=b46s2358
-terminal-life --rule $RULE --reset-random \
+RULE=b0237s2345
+terminal-life --rule $RULE --reset-random .25,.25:.5\
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
     -framerate 10 -i - -loop 0 -y "${RULE}.webp"
@@ -69,6 +78,7 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 # LtL favorite 1
 # ------------------------------------------------------------------------------
+
 RULE=r5m0s35-107b10-27m
 terminal-life --rule $RULE --reset-random \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
@@ -79,8 +89,9 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 # LtL favorite 2
 # ------------------------------------------------------------------------------
-RULE=r5m1s23-32b25-30m
-terminal-life --rule $RULE --reset-random \
+# RULE=r5m1s23-32b25-30m
+RULE=r5m0s40-87b0-31m
+terminal-life --rule $RULE --reset-random 0:0-1 \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
     -framerate 10 -i - -loop 0 -y "${RULE}.webp"
@@ -99,10 +110,21 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 # LtL phase diagram — size-1 ranges make the fixed midpoint explicit
 # ------------------------------------------------------------------------------
-RULE=r4m1s22-22b25-25m
-terminal-life --rule $RULE --reset-random --phase \
+RULE=r5m1s14-14b23-23d
+terminal-life --rule $RULE --reset-random .1,.5 --phase \
   --width $WIDTH --height $HEIGHT --ticks $TICKS \
   --out "${RULE}_phase.png"
+
+
+# ------------------------------------------------------------------------------
+# LtL rule phase diagram — sweep birth-window size across X and survival-window
+# size across Y, anchored at the rule's bRange[0]=22 / sRange[0]=70. The
+# bottom-right corner reproduces the source rule's full ranges.
+# ------------------------------------------------------------------------------
+RULE=r5m0s70-130b22-82m
+terminal-life --rule $RULE --reset-random --rule-phase=0:60,0:60 \
+  --width $WIDTH --height $HEIGHT --ticks $TICKS \
+  --out "${RULE}_rule_phase.png"
 
 
 # ==============================================================================

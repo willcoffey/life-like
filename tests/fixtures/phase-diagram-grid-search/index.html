@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phase diagram grid search</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    padding: 16px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    background: #111;
+    color: #ddd;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  header .spacer { flex: 1; }
+  button {
+    background: #222;
+    color: #ddd;
+    border: 1px solid #444;
+    padding: 6px 12px;
+    font: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  button:hover:not(:disabled) { background: #333; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  #page-label { min-width: 90px; text-align: center; font-variant-numeric: tabular-nums; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .cell {
+    display: flex;
+    flex-direction: column;
+    background: #181818;
+    border: 1px solid #2a2a2a;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .cell.empty { visibility: hidden; }
+  .cell video {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: #000;
+  }
+  .cell .label {
+    padding: 6px 8px;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+    color: #aaa;
+    border-top: 1px solid #2a2a2a;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>r5m1 (sLow, bLow) grid search</h1>
+  <div class="spacer"></div>
+  <button id="prev">Prev</button>
+  <span id="page-label">1 / 1</span>
+  <button id="next">Next</button>
+</header>
+<div class="grid" id="grid"></div>
+
+<script>
+  // Anchors mirror grid_rules.sh (7 sLow x 8 bLow = 56 rules).
+  const S_LOWS = [0, 20, 40, 61, 81, 101, 121];
+  const B_LOWS = [0, 17, 35, 52, 69, 86, 104, 121];
+  const SUFFIX = "_rule_phase_hires.mp4";
+
+  const rules = [];
+  for (const s of S_LOWS) {
+    for (const b of B_LOWS) {
+      rules.push(`r5m1s${s}-${s}b${b}-${b}m`);
+    }
+  }
+
+  const PAGE_SIZE = 6;
+  const pageCount = Math.ceil(rules.length / PAGE_SIZE);
+  let page = 0;
+
+  const grid = document.getElementById("grid");
+  const prev = document.getElementById("prev");
+  const next = document.getElementById("next");
+  const label = document.getElementById("page-label");
+
+  function render() {
+    grid.replaceChildren();
+    const start = page * PAGE_SIZE;
+    for (let i = 0; i < PAGE_SIZE; i++) {
+      const rule = rules[start + i];
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      if (!rule) {
+        cell.classList.add("empty");
+        grid.appendChild(cell);
+        continue;
+      }
+      const video = document.createElement("video");
+      video.src = rule + SUFFIX;
+      video.controls = true;
+      video.loop = true;
+      video.muted = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.preload = "auto";
+      const lbl = document.createElement("div");
+      lbl.className = "label";
+      lbl.textContent = rule;
+      cell.appendChild(video);
+      cell.appendChild(lbl);
+      grid.appendChild(cell);
+    }
+    label.textContent = `${page + 1} / ${pageCount}`;
+    prev.disabled = page === 0;
+    next.disabled = page >= pageCount - 1;
+  }
+
+  prev.addEventListener("click", () => { if (page > 0) { page--; render(); } });
+  next.addEventListener("click", () => { if (page < pageCount - 1) { page++; render(); } });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") prev.click();
+    if (e.key === "ArrowRight") next.click();
+  });
+
+  render();
+</script>
+</body>
+</html>
