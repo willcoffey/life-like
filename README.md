@@ -90,7 +90,8 @@ few examples I've liked
 I can also render LtL rules as a phase diagram. The minimum value for survive and birth is fixed,
 and the size of the range is interpolated over x and y. 
 
-<img src="./tests/fixtures/readme/r4m1s22-22b25-25m_phase.png" />
+
+<img src="./tests/fixtures/readme/r5m1s20-20b35-35m_phase.png" />
 
 ----------------------------------------------------------------------------------------------------
 
@@ -103,7 +104,8 @@ Heres a phase diagram of conways using the sin activation function. Then the sam
 smoothing set to 3.
 <img src="./tests/fixtures/readme/b3s23_sin.webp" />
 <img src="./tests/fixtures/readme/b3s23_sin_smoothed.webp" />
-
+<img gaussian smoothed>
+<img power smoothed>
 ----------------------------------------------------------------------------------------------------
 
 Zooming in, I found these waves interesting. 

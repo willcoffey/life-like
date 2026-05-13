@@ -110,11 +110,10 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 # LtL phase diagram — size-1 ranges make the fixed midpoint explicit
 # ------------------------------------------------------------------------------
-RULE=r5m1s14-14b23-23d
+RULE=r5m1s20-20b35-35m
 terminal-life --rule $RULE --reset-random .1,.5 --phase \
   --width $WIDTH --height $HEIGHT --ticks $TICKS \
   --out "${RULE}_phase.png"
-
 
 # ------------------------------------------------------------------------------
 # LtL rule phase diagram — sweep birth-window size across X and survival-window

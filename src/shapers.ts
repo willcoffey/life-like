@@ -75,8 +75,8 @@ export const Shapers = {
       return t * t * (3 - 2 * t);
     },
     diagram: {
-      "alpha": [-0.5, 1.5],
-      "beta": [0, 1],
+      "alpha": [-6, 6],
+      "beta": [-3, 3],
     },
   },
 
