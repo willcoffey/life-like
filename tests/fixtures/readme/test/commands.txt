@@ -1,0 +1,1 @@
+terminal-life --activation sin --rate 10 --theme managua --phase=-12.20703125:12.20703125,-9.934059582347412:13.075652235937206 --rule r5m0s35-107b10-27m --width 100 --height 100

@@ -165,6 +165,12 @@ export class LifeLike {
     return { ...grid, cache, cells };
   }
 
+  static configToJson(grid: Grid, indent: number = 2): string {
+    // Drop derived (cells, cache) and runtime (tick, playing, hash) fields.
+    const { cells, cache, playing, ...config } = grid;
+    return JSON.stringify(config, null, indent);
+  }
+
   /**
    * Compute the next state of the grid
    */
@@ -212,7 +218,7 @@ export class LifeLike {
      * If in Fixed mode, copy the buffered edges to the opposite sides to make updates flow
      * from one side of the grid to the opposite side. A toroidal topology.
      */
-    if (true || grid.mode === "Fixed") {
+    if (grid.mode === "Fixed") {
       LifeLike.copyBufferedEdges(
         nextState,
         grid.width,
@@ -690,6 +696,7 @@ const Controls = {
         grid.cells[position] = 0;
       }
     }
+    grid.tick = 0;
   },
   /**
    * Mirrors the top left quadrant to all other quadrants. mostly for the purpose of good visaul
@@ -722,6 +729,7 @@ const Controls = {
   "reset"(grid) {
     grid.cells = LifeLike.createBufferedArray(grid);
     grid.cache = LifeLike.buildGridCache(grid);
+    grid.tick = 0;
   },
 
   "load-state"(grid, state: Partial<Grid>) {
@@ -736,6 +744,10 @@ const Controls = {
     const [min, max] = grid.phaseDiagram.x;
     const change = (max - min) / 8;
     const range: [number, number] = [min + change, max + change];
+    if (grid.phaseDiagram.type === "rule") {
+      range[0] = Math.round(range[0]);
+      range[1] = Math.round(range[1]);
+    }
     grid.phaseDiagram.x = range;
   },
   "move-left"(grid) {
@@ -743,18 +755,30 @@ const Controls = {
     const [min, max] = grid.phaseDiagram.x;
     const change = (max - min) / 8;
     const range: [number, number] = [min - change, max - change];
+    if (grid.phaseDiagram.type === "rule") {
+      range[0] = Math.round(range[0]);
+      range[1] = Math.round(range[1]);
+    }
     grid.phaseDiagram.x = range;
   },
   "move-down"(grid) {
     const [min, max] = grid.phaseDiagram.y;
     const change = (max - min) / 8;
     const range: [number, number] = [min + change, max + change];
+    if (grid.phaseDiagram.type === "rule") {
+      range[0] = Math.round(range[0]);
+      range[1] = Math.round(range[1]);
+    }
     grid.phaseDiagram.y = range;
   },
   "move-up"(grid) {
     const [min, max] = grid.phaseDiagram.y;
     const change = (max - min) / 8;
     const range: [number, number] = [min - change, max - change];
+    if (grid.phaseDiagram.type === "rule") {
+      range[0] = Math.round(range[0]);
+      range[1] = Math.round(range[1]);
+    }
     grid.phaseDiagram.y = range;
   },
   "zoom-in"(grid) {
@@ -837,7 +861,7 @@ const Controls = {
       grid.phaseDiagram = {
         type: "activation",
         x: Shapers[name].diagram.alpha,
-        y: Shapers[name].diagram.alpha,
+        y: Shapers[name].diagram.beta,
       };
     }
 

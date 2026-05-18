@@ -5,6 +5,7 @@ import { KeyBinder } from "../vendor/vimlike-keybinder/keybinder.ts";
 import { Grid, LifeLike } from "./core.ts";
 import { ColorMap } from "./lib/ColorMap.ts";
 import { ColorScale } from "./lib/color-scale.ts";
+import { gridToCommand } from "./util.ts";
 
 const CELL_SIZE = 1;
 /**
@@ -14,6 +15,7 @@ const CELL_SIZE = 1;
 class LifeLikeElement extends HTMLElement {
   shadow?: ShadowRoot;
   component: LifeLike;
+
   container: HTMLElement | null = null;
   canvas: HTMLCanvasElement | null = null;
   colorMap: ColorMap;
@@ -22,8 +24,8 @@ class LifeLikeElement extends HTMLElement {
   colorScale: ColorScale | null = null;
   context: CanvasRenderingContext2D | undefined;
   vlk: KeyBinder;
-
   blinkControl: boolean = false;
+
   constructor() {
     super();
     this.component = new LifeLike({
@@ -34,6 +36,122 @@ class LifeLikeElement extends HTMLElement {
     this.vlk = new KeyBinder();
     this.handleCommands();
     this.colorMap = new ColorMap();
+  }
+
+  /**
+   * Pumps commands from the keybinder into the shared dispatcher.
+   */
+  async handleCommands() {
+    for await (const command of this.vlk) this.handleCommand(command);
+  }
+
+  /**
+   * Single entry point for every command -- keybinder, state-display events,
+   * or anything else. UI-only commands are handled inline; everything else is
+   * forwarded to core.
+   */
+  handleCommand(command: { command: string; [key: string]: any }) {
+    switch (command.command) {
+      case "blink-control":
+        this.blinkControl = !this.blinkControl;
+        break;
+      case "yank-command":
+        navigator.clipboard.writeText(gridToCommand(this.component.grid));
+        break;
+      case "yank-json":
+        navigator.clipboard.writeText(LifeLike.configToJson(this.component.grid));
+        break;
+      default:
+        this.component.stdin(command);
+    }
+  }
+
+  /**
+   * All the kebyindings for the interface.
+   */
+  setupKeyBindings() {
+    const vlk = this.vlk;
+    window.addEventListener("keydown", (e) => {
+      const res = vlk.handleKeyEvent(e);
+    });
+
+    /** New VLK api, should start transitioning older keybinds - once cemented */
+    vlk.bind(
+      "normal:<d><a>",
+      "set-diagram:activation",
+      "Set phase diagram mode to activation function",
+    );
+    vlk.bind("normal:<d><r>", "set-diagram:rule", "Set phase diagram mode to rule interpolation");
+
+    vlk.bind(
+      "normal:<y><c>",
+      "yank-command",
+      "Copy current grid parameters as terminal-life command. Does not copy cell state.",
+    );
+    vlk.bind(
+      "normal:<y><j>",
+      "yank-json",
+      "Copy current grid parameters as JSON. Does not copy cell state.",
+    );
+
+    /**
+     * Moving and zooming the window into the phase diagram
+     */
+    vlk.bindKeys("<l>", "move-right", "normal");
+    vlk.bindKeys("<h>", "move-left", "normal");
+    vlk.bindKeys("<j>", "move-down", "normal");
+    vlk.bindKeys("<k>", "move-up", "normal");
+    vlk.bindKeys("<=>", "zoom-in", "normal");
+    vlk.bindKeys("<+>", "zoom-in", "normal");
+    vlk.bindKeys("<->", "zoom-out", "normal");
+
+    /** */
+    vlk.bindKeys("<s>", "increase-smid", "normal");
+    vlk.bindKeys("<Shift-S>", "decrease-smid", "normal");
+    vlk.bindKeys("<b>", "increase-bmid", "normal");
+    vlk.bindKeys("<Shift-B>", "decrease-bmid", "normal");
+
+    // @TODO - goto standard resolution for current activation function
+    vlk.bindKeys("<g><g>", "goto-start", "normal");
+
+    // Setting the center point of the current diagram as grid params
+    vlk.bindKeys("<Shift-Enter>", "select-params", "normal");
+    // Toggle between normal mode (wrap edges, constant params, and phase diagram)
+    vlk.bindKeys("<m>", "toggle-mode", "normal");
+
+    /** Increase the resolution of the grid */
+    vlk.bindKeys("<Shift-+>", "increase-res", "normal");
+    vlk.bindKeys("<Shift-->", "decrease-res", "normal");
+    vlk.bindKeys("<Shift-_>", "decrease-res", "normal");
+
+    /**
+     * Change the activation
+     */
+    vlk.bindKeys("<a>", "next-activation", "normal");
+    vlk.bindKeys("<Shift-A>", "prev-activation", "normal");
+
+    vlk.bindKeys("<c>", "increase-rate", "normal");
+    vlk.bindKeys("<Shift-C>", "decrease-rate", "normal");
+
+    vlk.bindKeys("<t>", "next-theme", "normal");
+    vlk.bindKeys("<Shift-T>", "prev-theme", "normal");
+    /**
+     * bindings for manipulating the grid. reset, random pixels
+     */
+    vlk.bindKeys("<e>es>", "make-symmetric", "normal");
+    vlk.bindKeys("<r><r>", "reset-random", "normal");
+    vlk.bindKeys("<r><s>", "reset-random", "normal", {
+      densityRange: [.0001, .0001],
+      valueRange: [0, 1],
+    });
+    vlk.bindKeys("<x>", "reset", "normal");
+
+    vlk.bindKeys("<f>", "blink-control", "normal");
+
+    vlk.bindKeys("< >", "play-pause", "normal");
+    vlk.bindKeys("<.>", "tick", "normal");
+
+    vlk.bindKeys("<Shift-L>", "debug", "normal");
   }
 
   /**
@@ -80,14 +198,15 @@ class LifeLikeElement extends HTMLElement {
     };
     fn();
 
-    this.listenForMouseEvents();
     this.setupKeyBindings();
 
-    /** For pasting JSON into the interface */
-    this.stateDisplay?.addEventListener("load-state", (e) => {
-      const detail = (e as CustomEvent).detail;
-      this.component.stdin({ command: "load-state", args: detail });
-    });
+    /** state-display dispatches semantic events for user actions; route them
+     * through the same dispatcher as keybinds. */
+    const forward = (name: string) => (e: Event) =>
+      this.handleCommand({ command: name, args: (e as CustomEvent).detail });
+    this.stateDisplay?.addEventListener("yank-command", forward("yank-command"));
+    this.stateDisplay?.addEventListener("yank-json", forward("yank-json"));
+    this.stateDisplay?.addEventListener("load-state", forward("load-state"));
   }
 
   /**
@@ -128,143 +247,6 @@ class LifeLikeElement extends HTMLElement {
     const el = this.shadow?.getElementById(id);
     if (!(el instanceof ctor)) throw `#${id} missing or not ${ctor.name}`;
     return el;
-  }
-
-  async handleCommands() {
-    for await (const command of this.vlk) {
-      console.log(command);
-      switch (command.command) {
-        case "blink-control":
-          this.blinkControl = !this.blinkControl;
-          break;
-        default:
-          this.component.stdin(command);
-      }
-    }
-  }
-
-  setupKeyBindings() {
-    const vlk = this.vlk;
-    window.addEventListener("keydown", (e) => {
-      const res = vlk.handleKeyEvent(e);
-      //if (res) e.preventDefault();
-    });
-
-    /** Keybindings for mode switching */
-    /** @TODO change to system handlers
-     */
-    vlk.bind("brush:<n>", "set-mode:normal", "Exit brush mode back to normal mode");
-    vlk.bind("<b>", "set-mode:brush", "Enter brush mode, for changing the parameters of the brush");
-
-    /** New VLK api, should start transitioning older keybinds - once cemented */
-    vlk.bind(
-      "normal:<d><a>",
-      "set-diagram:activation",
-      "Set phase diagram mode to activation function",
-    );
-    vlk.bind("normal:<d><r>", "set-diagram:rule", "Set phase diagram mode to rule interpolation");
-
-    /**
-     * Moving and zooming the window into the phase diagram
-     */
-    vlk.bindKeys("<l>", "move-right", "normal");
-    vlk.bindKeys("<h>", "move-left", "normal");
-    vlk.bindKeys("<j>", "move-down", "normal");
-    vlk.bindKeys("<k>", "move-up", "normal");
-    vlk.bindKeys("<=>", "zoom-in", "normal");
-    vlk.bindKeys("<+>", "zoom-in", "normal");
-    vlk.bindKeys("<->", "zoom-out", "normal");
-
-    /** */
-    vlk.bindKeys("<s>", "increase-smid", "normal");
-    vlk.bindKeys("<Shift-S>", "decrease-smid", "normal");
-    vlk.bindKeys("<b>", "increase-bmid", "normal");
-    vlk.bindKeys("<Shift-B>", "decrease-bmid", "normal");
-
-    // @TODO - goto standard resolution for current activation function
-    vlk.bindKeys("<g><g>", "goto-start", "normal");
-
-    // Setting the center point of the current diagram as grid params
-    vlk.bindKeys("<Shift-Enter>", "select-params", "normal");
-    // Toggle between normal mode (wrap edges, constant params, and phase diagram)
-    vlk.bindKeys("<m>", "toggle-mode", "normal");
-
-    /** Increase the resolution of the grid */
-    vlk.bindKeys("<Shift-+>", "increase-res", "normal");
-    vlk.bindKeys("<Shift-->", "decrease-res", "normal");
-    vlk.bindKeys("<Shift-_>", "decrease-res", "normal");
-
-    /**
-     * Change the activation
-     */
-    vlk.bindKeys("<a>", "next-activation", "normal");
-    vlk.bindKeys("<Shift-A>", "prev-activation", "normal");
-
-    vlk.bindKeys("<c>", "increase-rate", "normal");
-    vlk.bindKeys("<Shift-C>", "decrease-rate", "normal");
-
-    vlk.bindKeys("<t>", "next-theme", "normal");
-    vlk.bindKeys("<Shift-T>", "prev-theme", "normal");
-    /**
-     * bindings for manipulating the grid. reset, random pixels
-     */
-    //vlk.bindKeys("<s>", "make-symmetric", "normal");
-    vlk.bindKeys("<r><r>", "reset-random", "normal");
-    vlk.bindKeys("<r><s>", "reset-random", "normal", {
-      densityRange: [.0001, .0001],
-      valueRange: [0, 1],
-    });
-    vlk.bindKeys("<x>", "reset", "normal");
-
-    vlk.bindKeys("<f>", "blink-control", "normal");
-
-    vlk.bindKeys("< >", "play-pause", "normal");
-    vlk.bindKeys("<.>", "tick", "normal");
-
-    vlk.bindKeys("<Shift-L>", "debug", "normal");
-  }
-
-  /**
-   * Listen for mouse events and send only necessary data to LifeLike
-   */
-  listenForMouseEvents() {
-    this.addEventListener("mousedown", (mouseEvent) => {
-      /** Send minimal state to processing class */
-      this.component.stdin({ command: "mousedown" });
-    });
-    this.addEventListener("mouseup", (mouseEvent) => {
-      /** Send minimal state to processing class */
-      this.component.stdin({ command: "mouseup" });
-    });
-    this.addEventListener("mousemove", (mouseEvent) => {
-      /** Send minimal state to processing class */
-      this.component.stdin({ command: "mousemove", pos: this.getMousePosition(mouseEvent) });
-    });
-  }
-
-  /** Calculate position of mouse relative to canvas */
-  getMousePosition(event: MouseEvent) {
-    if (!this.context) throw "getMousePosition err: No canvas context";
-    //const rect = this.context.canvas.getBoundingClientRect();
-    const rect = this.context.canvas.getBoundingClientRect();
-    const xRatio = this.component.grid.width / rect.width;
-    const yRatio = this.component.grid.height / rect.height;
-    const x = xRatio * (event.clientX - rect.x);
-    const y = yRatio * (event.clientY - rect.y);
-
-    return [Math.floor(x / CELL_SIZE), Math.floor(y / CELL_SIZE)];
-  }
-
-  static getCellColor(state: number): string {
-    if (state == 0 || state == 1) {
-      const intensity = Math.round(state * 255); // Converting to a scale of 0-255
-      const color = `#${i2h(intensity)}${i2h(intensity)}${i2h(intensity)}`; // Creating the color hex
-      return color;
-    } else {
-      const intensity = Math.round(state * 200); // Converting to a scale of 0-255
-      const color = `#${i2h(intensity)}${i2h(intensity)}${i2h(intensity + 55)}`; // Creating the color hex
-      return color;
-    }
   }
 
   static getContext(shadow: ShadowRoot): CanvasRenderingContext2D {

@@ -26,8 +26,7 @@ Life-Like Terminal
 
   -h --help         Print this help
   -t --ticks N      Advance the grid by N ticks before saving (default: 0)
-  --load FILENAME   Load initial grid (cells + embedded state) from PNG. If 
-                    omitted, grid is randomized.
+  --load FILENAME   Load initial grid (cells + embedded state) from PNG.
   --out FILENAME    Write resulting grid to PNG file.
   --log-json        Logs the serializable grid metadata in JSON format. I.e. 
                     everything needed to reproduce state except for cell state.
@@ -41,15 +40,14 @@ Life-Like Terminal
   --phase [RANGE]   PhaseDiagram mode: linearly interpolate alpha and beta across the grid using
                     the given min:max ranges. Overrides fixed --alpha / --beta values.
   --rule-phase [RANGE]
-                    PhaseDiagram mode for LtL rules: sweep birth-window size across X and
-                    survival-window size across Y. Anchored at the current --rule's
-                    bRange[0] / sRange[0]. Format: bMin:bMax,sMin:sMax. Omit the value to
-                    default to [0, n] on both axes, where n is the neighborhood size.
+                    PhaseDiagram mode for LtL rules. Uses current values for 
+                    minimum birth/survive value and interpolates the range size
+                    over X and Y axis.
   --activation NAME Activation function to use (e.g. gaussian, sin, sigmoid). See shapers.ts
   --theme           Name of a palette. magma, inferno, plasma, viridis, cividis, turbo, berlin,
                      managua, vanimo
   -v --verbose      Log output details
-  --rule            The rule to run, either lifelike or LtL  B36/S23 
+  --rule            The rule to run, either lifelike or LtL
                     Lifelike: "b36s23" means birth on 3 or 6 and survive 2 or 3
                     LtL: "r5m1s34-58b34-45m" where that means radius 5 middle included survive
                     between 34 and 58, birth between 34 and 45, use a moore neighborhood. "d" for
@@ -66,7 +64,7 @@ Life-Like Terminal
 =================================== Examples ==================================
 
   # Seed a random grid, tick 50 times, save
-  terminal-life --ticks 50 --out run.png
+  terminal-life --reset-random --ticks 50 --out run.png
 
   # Resume a saved grid for another 25 ticks
   terminal-life --load run.png -t 25 --out run-75.png
@@ -106,12 +104,15 @@ async function main() {
     rule: true,
     "log-json": true,
     "reset-random": true,
+    "verify": true,
   });
   if (opts.flags.h || opts.flags.help) return printHelp();
 
   const verbose = opts.flags.v ?? opts.flags.verbose;
   const inputGrid = parseGridFromArguments(opts);
   let life: LifeLike;
+
+  if (typeof opts.options.verify === "string") return verify(opts.options.verify);
 
   /** Build the grid */
   if (opts.options.load) {
@@ -149,6 +150,7 @@ async function main() {
     console.log(life.grid);
     console.log(`Neighborhood size: ${life.grid.cache.neighborhood.length}`);
   }
+
   if (opts.flags["reset-random"]) {
     const range = opts.options["reset-random"]
       ? parseRangePair(opts.options["reset-random"])
@@ -163,10 +165,8 @@ async function main() {
   if (opts.options.ticks || opts.options.t) {
     const ticks = Number(opts.options.ticks ?? opts.options.t);
     for (let i = 0; i < ticks; i++) {
-      if (opts.flags.stream) {
-        writeAll(makeRgbaBuffer(life.grid));
-      }
       life.stdin({ "command": "tick" });
+      if (opts.flags.stream) writeAll(makeRgbaBuffer(life.grid));
     }
 
     // compute the hash of this tick and store it on the grid
@@ -183,17 +183,11 @@ async function main() {
     if (verbose) {
       console.log(life.grid);
     } else {
-      logGridMetadata(life.grid);
+      console.log(LifeLike.configToJson(life.grid));
     }
   }
 
   if (verbose) console.log(`Took ${((Date.now() - now) / 1000 / 60).toFixed(2)} minutes`);
-}
-
-function logGridMetadata(grid: Grid) {
-  const exclude = new Set(["cache", "cells"]);
-  const json = JSON.stringify(grid, (key, value) => exclude.has(key) ? undefined : value, 2);
-  console.log(json);
 }
 
 function writeAll(buffer: Uint8Array) {
@@ -432,8 +426,8 @@ function createTextChunk(grid: Grid): Uint8Array {
 }
 
 function getStateString(grid: Grid): string {
-  const { cells, cache, ...serializable } = grid;
-  return JSON.stringify(serializable);
+  const config = JSON.parse(LifeLike.configToJson(grid, 0));
+  return JSON.stringify(config);
 }
 
 /**
@@ -465,3 +459,33 @@ function parseRange(input: string): [number, number] | undefined {
 }
 
 main();
+
+/**
+ * Loads grid config from the specified PNG.
+ * assumes that it was built using reset-random and no other commands
+ * runs the same number of ticks from the file and compares the computed hash
+ * to the saved hash. Assume initial state === reset-random
+ *
+ * This is just basic verification until the command logging is complete, at which point it will
+ * be swticthed to a chain of hashes along with command replay
+ */
+function verify(filename: string) {
+  /**
+   * If we are loading a PNG, we should use it's saved grid properties but override anything
+   * explicitly set by the command line arguments. except width & height.
+   */
+  const loadedGrid = loadPng(filename);
+  const { hash } = loadedGrid;
+  const life = new LifeLike(loadedGrid);
+  life.stdin({ command: "reset-random" });
+  for (let i = 0; i < loadedGrid.tick; i++) {
+    life.stdin({ command: "tick" });
+  }
+  life.stdin({ command: "hash" });
+
+  if (life.grid.hash !== hash) {
+    console.log("Verification Failed - Defferent Final Hash");
+  } else {
+    console.log("Verified");
+  }
+}
