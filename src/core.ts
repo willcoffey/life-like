@@ -177,6 +177,21 @@ export class LifeLike {
   static getNextState(grid: Grid): Float64Array {
     delete grid.hash;
 
+    /**
+     * Ensure the source buffer has wrap-around edges before we read from it.
+     * Controls like reset-random / load-state / make-symmetric only touch the
+     * inner area, so without this the first tick after them sees a zero-padded
+     * border instead of the toroidal topology.
+     */
+    if (grid.mode === "Fixed") {
+      LifeLike.copyBufferedEdges(
+        grid.cells,
+        grid.width,
+        grid.height,
+        grid.cache.parsedRule.radius,
+      );
+    }
+
     const nextState = LifeLike.createBufferedArray(grid);
     for (const [position, x, y] of LifeLike.cellIterator(grid)) {
       /**
@@ -209,23 +224,10 @@ export class LifeLike {
       state = grid.cells[position] + ((state - grid.cells[position]) / grid.changeRate);
       nextState[position] = state;
       if (isNaN(state)) {
-        console.log(rule);
-        throw "adsad";
+        throw "Somehow a NaN value got into cell state";
       }
     }
 
-    /**
-     * If in Fixed mode, copy the buffered edges to the opposite sides to make updates flow
-     * from one side of the grid to the opposite side. A toroidal topology.
-     */
-    if (grid.mode === "Fixed") {
-      LifeLike.copyBufferedEdges(
-        nextState,
-        grid.width,
-        grid.height,
-        grid.cache.parsedRule.radius,
-      );
-    }
     grid.tick++;
     return nextState;
   }
@@ -639,6 +641,21 @@ function splitmix32(a: number) {
   };
 }
 
+/**
+ * Step size for moving the phase-diagram window. In rule mode the underlying
+ * parameter space is integer-valued (sRange/bRange sizes), so we round and
+ * enforce a minimum step of 1 — otherwise zooming in shrinks the step below 0.5
+ * and Math.round snaps the moved range back to its original endpoints.
+ */
+function phaseStep(grid: Grid, span: number): number {
+  if (grid.phaseDiagram.type === "rule") return Math.max(1, Math.round(span / 8));
+  return span / 8;
+}
+function snapRange(grid: Grid, range: [number, number]): [number, number] {
+  if (grid.phaseDiagram.type === "rule") return [Math.round(range[0]), Math.round(range[1])];
+  return range;
+}
+
 type Control = (grid: Grid, args: any) => void;
 /**
  * Controls is a 1-1 mapping of stdin command string to synchronous functions that manipulate Grid
@@ -683,7 +700,7 @@ const Controls = {
    * magnitude of life cells
    */
   "reset-random"(grid, { densityRange, valueRange } = {}) {
-    if (!densityRange) densityRange = [.5, .5];
+    if (!densityRange) densityRange = [0, 1];
     if (!valueRange) valueRange = [0, 1];
     const fixedValue = valueRange[0] === valueRange[1];
     grid.cells = LifeLike.createBufferedArray(grid);
@@ -742,44 +759,24 @@ const Controls = {
    */
   "move-right"(grid) {
     const [min, max] = grid.phaseDiagram.x;
-    const change = (max - min) / 8;
-    const range: [number, number] = [min + change, max + change];
-    if (grid.phaseDiagram.type === "rule") {
-      range[0] = Math.round(range[0]);
-      range[1] = Math.round(range[1]);
-    }
-    grid.phaseDiagram.x = range;
+    const change = phaseStep(grid, max - min);
+    grid.phaseDiagram.x = snapRange(grid, [min + change, max + change]);
   },
   "move-left"(grid) {
     if (grid.mode !== "PhaseDiagram") return;
     const [min, max] = grid.phaseDiagram.x;
-    const change = (max - min) / 8;
-    const range: [number, number] = [min - change, max - change];
-    if (grid.phaseDiagram.type === "rule") {
-      range[0] = Math.round(range[0]);
-      range[1] = Math.round(range[1]);
-    }
-    grid.phaseDiagram.x = range;
+    const change = phaseStep(grid, max - min);
+    grid.phaseDiagram.x = snapRange(grid, [min - change, max - change]);
   },
   "move-down"(grid) {
     const [min, max] = grid.phaseDiagram.y;
-    const change = (max - min) / 8;
-    const range: [number, number] = [min + change, max + change];
-    if (grid.phaseDiagram.type === "rule") {
-      range[0] = Math.round(range[0]);
-      range[1] = Math.round(range[1]);
-    }
-    grid.phaseDiagram.y = range;
+    const change = phaseStep(grid, max - min);
+    grid.phaseDiagram.y = snapRange(grid, [min + change, max + change]);
   },
   "move-up"(grid) {
     const [min, max] = grid.phaseDiagram.y;
-    const change = (max - min) / 8;
-    const range: [number, number] = [min - change, max - change];
-    if (grid.phaseDiagram.type === "rule") {
-      range[0] = Math.round(range[0]);
-      range[1] = Math.round(range[1]);
-    }
-    grid.phaseDiagram.y = range;
+    const change = phaseStep(grid, max - min);
+    grid.phaseDiagram.y = snapRange(grid, [min - change, max - change]);
   },
   "zoom-in"(grid) {
     const [minX, maxX] = grid.phaseDiagram.x;

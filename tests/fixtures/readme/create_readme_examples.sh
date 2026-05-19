@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 WIDTH=150
 HEIGHT=150
 TICKS=100
-FUTURE_TICKS=10   # README targets 10000 for the wave-synchronization example
+FUTURE_TICKS=10000   # README targets 10000 for the wave-synchronization example
 SEED_TICKS=150    # how long to settle the sparse-seeded waves state before snapshotting
 
 
@@ -18,12 +18,22 @@ SEED_TICKS=150    # how long to settle the sparse-seeded waves state before snap
 
 
 # ------------------------------------------------------------------------------
+# README banner — Conway's GoL seeded with "almost alive" states.
+# Wide, short canvas so it reads as a banner.
+# ------------------------------------------------------------------------------
+terminal-life --rule b3s23 --reset-random .15,.9999999999999999 \
+  --theme magma --width 800 --height 80 --ticks 75 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 800x80 \
+    -framerate 10 -i - -loop 0 -y banner.webp
+
+
+# ------------------------------------------------------------------------------
 # Chaotic life-like rule, still PNG
 # ------------------------------------------------------------------------------
 RULE=b3456s3456
 terminal-life --rule $RULE --reset-random \
   --width $WIDTH --height $HEIGHT --ticks $TICKS \
-  --out example_1.png
+  --out b3456s3456.png
 
 
 # ------------------------------------------------------------------------------
@@ -33,7 +43,7 @@ RULE=b3s23
 terminal-life --rule $RULE --reset-random .15,.9999999999999999 \
 --theme magma --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
-    -framerate 5 -i - -loop 0 -y gol_animation.webp
+    -framerate 10 -i - -loop 0 -y gol_animation.webp
 
 
 #
@@ -80,7 +90,7 @@ terminal-life --rule $RULE --reset-random .25,.25:.5\
 # ------------------------------------------------------------------------------
 
 RULE=r5m0s35-107b10-27m
-terminal-life --rule $RULE --reset-random \
+terminal-life --rule $RULE --reset-random .8,.3 \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
     -framerate 10 -i - -loop 0 -y "${RULE}.webp"
@@ -90,8 +100,9 @@ terminal-life --rule $RULE --reset-random \
 # LtL favorite 2
 # ------------------------------------------------------------------------------
 # RULE=r5m1s23-32b25-30m
-RULE=r5m0s40-87b0-31m
-terminal-life --rule $RULE --reset-random 0:0-1 \
+# RULE=r5m0s40-87b0-31m
+RULE=r5m0s64-86b18-69m
+terminal-life --theme berlin --rule $RULE --reset-random .5,.5 \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
     -framerate 10 -i - -loop 0 -y "${RULE}.webp"
@@ -100,8 +111,8 @@ terminal-life --rule $RULE --reset-random 0:0-1 \
 # ------------------------------------------------------------------------------
 # LtL favorite 3
 # ------------------------------------------------------------------------------
-RULE=r2m0s5-9b6-8m
-terminal-life --rule $RULE --reset-random \
+RULE=r5m0s32-36b23-31m
+terminal-life --rule $RULE --reset-random .35,.8 \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
     -framerate 10 -i - -loop 0 -y "${RULE}.webp"
@@ -112,19 +123,8 @@ terminal-life --rule $RULE --reset-random \
 # ------------------------------------------------------------------------------
 RULE=r5m1s20-20b35-35m
 terminal-life --rule $RULE --reset-random .1,.5 --phase \
-  --width $WIDTH --height $HEIGHT --ticks $TICKS \
+  --width 300 --height 300 --ticks $TICKS \
   --out "${RULE}_phase.png"
-
-# ------------------------------------------------------------------------------
-# LtL rule phase diagram — sweep birth-window size across X and survival-window
-# size across Y, anchored at the rule's bRange[0]=22 / sRange[0]=70. The
-# bottom-right corner reproduces the source rule's full ranges.
-# ------------------------------------------------------------------------------
-RULE=r5m0s70-130b22-82m
-terminal-life --rule $RULE --reset-random --rule-phase=0:60,0:60 \
-  --width $WIDTH --height $HEIGHT --ticks $TICKS \
-  --out "${RULE}_rule_phase.png"
-
 
 # ==============================================================================
 # PART 2 — with activation function and/or time smoothing
@@ -135,7 +135,7 @@ terminal-life --rule $RULE --reset-random --rule-phase=0:60,0:60 \
 # Conway + sin activation, phase diagram animation
 # ------------------------------------------------------------------------------
 RULE=b3s23
-terminal-life --rule $RULE --activation sin --theme managua --phase \
+terminal-life --rule $RULE --activation sin --theme cividis --phase \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
     -framerate 10 -i - -loop 0 -y "${RULE}_sin.webp"
@@ -149,6 +149,26 @@ terminal-life --rule $RULE --activation sin --theme managua --phase --rate 3 \
   --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
   | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
     -framerate 10 -i - -loop 0 -y "${RULE}_sin_smoothed.webp"
+
+
+# ------------------------------------------------------------------------------
+# Conway + gaussian activation + time smoothing
+# ------------------------------------------------------------------------------
+RULE=b3s23
+terminal-life --rule $RULE --activation gaussian --theme managua --phase --rate 3 \
+  --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
+    -framerate 10 -i - -loop 0 -y "${RULE}_gaussian_smoothed.webp"
+
+
+# ------------------------------------------------------------------------------
+# Conway + smoothstep activation (no time smoothing), zoomed-in phase window
+# ------------------------------------------------------------------------------
+RULE=b3s23
+terminal-life --rule $RULE --activation smoothstep --theme cividis --phase=-0.75:0.75,-0.75:0.75 \
+  --width $WIDTH --height $HEIGHT --ticks $TICKS --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size ${WIDTH}x${HEIGHT} \
+    -framerate 10 -i - -loop 0 -y "${RULE}_smoothstep.webp"
 
 
 # ------------------------------------------------------------------------------

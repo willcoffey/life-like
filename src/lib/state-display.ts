@@ -29,8 +29,8 @@ const FIELDS: Field[] = [
 const HTML = `
 <style>
   :host { font: 14px/1.3 monospace; color: #eee; }
-  #sd { display: grid; grid-template-columns: repeat(6, fit-content(180px));
-        justify-content: start; gap: 1px; background: #222; }
+  #sd { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 1px; background: #222; }
   #sd > * { background: #000; padding: 4px 6px; min-width: 0;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #sd > [data-label]:focus { white-space: normal; word-break: break-all;
@@ -42,7 +42,7 @@ const HTML = `
   #actions > * { font: inherit; padding: 4px; min-width: 0; }
   textarea { resize: none; }
   @media (max-width: 600px) {
-    #sd { grid-template-columns: repeat(3, fit-content(180px)); }
+    #sd { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
 </style>
 <div id="sd">

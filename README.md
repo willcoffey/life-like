@@ -1,6 +1,6 @@
 # *Almost* Life-Like
 <p class="subtitle">A Probabilistic extension of Conways Game of Life and other life-like automata</p>
-<img src="tests/fixtures/readme/banner.png" />
+<img src="tests/fixtures/readme/banner.webp" />
 
 ## About
 This project is an exploration of extending life-like automata to continous states by interpreting
@@ -9,12 +9,14 @@ a weighted sum of the neighborhood, then apply a growth function.
 
 The state of each cell is treated as the odds of that cell being alive. The update function 
 calculates the odds of there being 0, 1, 2 neighbors alive and so forth. Standard life-like rules
-are applied to each discrete state and combined to form next state.
+are applied to the probabilities for each discrete state and combined to form next state.
 
-There is a web interface for exploring patterns and rules, a terminal utility for running the model,
-saving and loading images, and streaming to FFMPEG to create animations.
+There is a web interface for exploring patterns and rules and a terminal utility for running the 
+model and saving the grid state as PNG images. It can also be combined with `ffmpeg` to create 
+animations.
 
-A demo page can be found [here](https://willcoffey.github.io/life-like/demo.html) 
+The web app is a vanilla web component which can be found here.
+[here](https://willcoffey.github.io/life-like/demo.html) 
 
 ## Installation
 This project was built for `Deno` but can also be run under `Node` using `tsx`
@@ -43,83 +45,185 @@ npx tsx src/terminal-life.ts --help
 ```
 
 ## Examples
-A few example commands to demonstrate the terminal app. Paramters are generally discovered in web 
-app which can output command strings for further tweaking via terminal-life.
+Below are a series of examples that can be copied verbatim to generate 
+animations so long as `ffmpeg` and `terminal-life` are properly installed. To
+understand what the differnt options do, see `terminal-life -h` and the 
+algorithm section of this doc.
 
-None of these first examples use an activation function or time smoothing paramter. To me this makes
-them the most satisfying since they all collapse back their identical life-like or larger-than-life 
-behaviour on discrete states.
-
-Run a known chaotic rule with initial noise on a 200x100 grid for 100 ticks and save the result as
-`example_1.png`
+### Basic Pattern
+Basic usage to generate a PNG for a life-like rule. random initial state, 200x200, run for 100 ticks
+and saved as `b3456s3456.png`
 ```
-terminal-life --rule b3456s3456 --reset-random --width 200 --height 100 --ticks 100 --out example_1.png
+terminal-life --rule b3456s3456 --reset-random --width 200 --height 100 --ticks 100 --out b3456s3456.png
 ```
-<img src="./tests/fixtures/readme/example_1.png" />
+
+<img src="./tests/fixtures/readme/b3456s3456.png" />
+
+---
+
+We can then load the state and log the json parameters via this command. 
+Useful for copying parameter but not grid state to the web app, or inspecting
+the settings.
+```
+terminal-life --load b3456s3456.png --log-json
+```
 
 ----------------------------------------------------------------------------------------------------
 
-It's easy to create animations by streaming raw RGBA frames to FFMPEG. This is Game of Life 
-initialized with *almost* alive states. GoL eventually becomes uniform blobs without an activation
-function.
-<img src="./tests/fixtures/readme/gol_animation.webp" />
-
-----------------------------------------------------------------------------------------------------
-
-A few patterns of I've come across that I've liked. Most patterns are similar to those below if they
-don't find a constant value. Take a look at the gallery @TODO here for an idea of how random 
-patterns turn out.
-
-<img src="./tests/fixtures/readme/b01s78.webp" />
-<img src="./tests/fixtures/readme/b4567s01457.webp" />
-<img src="./tests/fixtures/readme/b38s12347.webp" />
-<img src="./tests/fixtures/readme/b0237s2345.webp" />
-
-----------------------------------------------------------------------------------------------------
-
-Larger than life rules have some more variety, but also tend towards similar patterns. Here are a
-few examples I've liked
-
-<img src="./tests/fixtures/readme/r5m0s35-107b10-27m.webp" />
-<img src="./tests/fixtures/readme/r5m1s23-32b25-30m.webp" />
-<img src="./tests/fixtures/readme/r2m0s5-9b6-8m.webp" />
-<img src="./tests/fixtures/readme/r5m0s40-87b0-31m.webp" />
-
-----------------------------------------------------------------------------------------------------
-
-I can also render LtL rules as a phase diagram. The minimum value for survive and birth is fixed,
-and the size of the range is interpolated over x and y. 
-
-
-<img src="./tests/fixtures/readme/r5m1s20-20b35-35m_phase.png" />
-
-----------------------------------------------------------------------------------------------------
-
-The rest of these examples use time smoothing, an activation function, or both. I like the visual 
-patterns more and it's much easier to interpolate over the two activation function parameters but
-I also find the math less satisfying. Time smoothing is also useful for reducing or eliminationg
-the flickering of the standard rules.
-
-Heres a phase diagram of conways using the sin activation function. Then the same thing with time
-smoothing set to 3.
-<img src="./tests/fixtures/readme/b3s23_sin.webp" />
-<img src="./tests/fixtures/readme/b3s23_sin_smoothed.webp" />
-<img gaussian smoothed>
-<img power smoothed>
-----------------------------------------------------------------------------------------------------
-
-Zooming in, I found these waves interesting. 
-The commands below create an intial state, a brief animation, advance the state by 10,000 ticks, 
-then create another animation. This shows the waves slowly synchronizing over time from theire 
-initial random state.
-<img src="./tests/fixtures/readme/waves_initial.webp" />
-<img src="./tests/fixtures/readme/waves_future.webp" />
-
-----------------------------------------------------------------------------------------------------
+These examples all create animations from simple life-like rules. The only differences in the 
+commands are the initial random state and what rule is being applied.
 
 ```
-terminal-life --width 400 --height 200 --rule b3s23 --activation sin --theme managua --ticks 200 --phase --stream \
+terminal-life --rule b01s78 --reset-random --width 150 --height 150 --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y b01s78.webp
 ```
+
+```
+terminal-life --rule b4567s01457 --reset-random --width 150 --height 150 --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y b4567s01457.webp
+```
+
+```
+terminal-life --rule b0237s2345 --reset-random .25,.25:.5 --width 150 --height 150 --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y b0237s2345.webp
+```
+
+<img src="./tests/fixtures/readme/b01s78.webp" width="200" height="200" />
+<img src="./tests/fixtures/readme/b4567s01457.webp" width="200" height="200" />
+<img src="./tests/fixtures/readme/b0237s2345.webp" width="200" height="200" />
+
+----------------------------------------------------------------------------------------------------
+
+These examples are similar to the above, but use larger than life neighborhoods that include many
+more cells.
+
+```
+terminal-life --rule r5m0s35-107b10-27m --reset-random .8,.3 --width 150 --height 150 --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y r5m0s35-107b10-27m.webp
+```
+
+```
+terminal-life --rule r5m0s64-86b18-69m --reset-random .5,.5 --theme berlin --width 150 --height 150 --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y r5m0s64-86b18-69m.webp
+```
+
+```
+terminal-life --rule r5m0s32-36b23-31m --reset-random .35,.8 --width 150 --height 150 --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y r5m0s32-36b23-31m.webp
+```
+<img src="./tests/fixtures/readme/r5m0s35-107b10-27m.webp" width="200" height="200" />
+<img src="./tests/fixtures/readme/r5m0s64-86b18-69m.webp" width="200" height="200" />
+<img src="./tests/fixtures/readme/r5m0s32-36b23-31m.webp" width="200" height="200" />
+
+----------------------------------------------------------------------------------------------------
+
+For larger-than-life rules, there is also the option to render a "phase diagram" which is a 
+linear interpolation of the rule space across the x/y coordinates. I.e. the rule being applied
+depends on the position on the grid.
+
+```
+terminal-life --rule r5m0s35-107b10-27m --reset-random .8,.3 --phase \
+  --width 300 --height 300 --ticks 100 \
+  --out r5m0s35-107b10-27m_phase.png
+```
+
+<img src="./tests/fixtures/readme/r5m0s35-107b10-27m_phase.png" width="300" height="300" />
+
+---
+
+The above examples demonstrate the basic behaviour, and the core idea of this
+approach, which is that when values are discrete the behaviour of the system is
+identical to standard life-like or larger-than-life behaviour. The rest of the
+examples below use activation functions or time-step smoothing that can create 
+continous values from discrete 0/1 states. For this reason I find them less 
+mathmatically satisfying since you're introducing additional complexity that 
+goes against the simple rules to emergent behaviour principle that makes 
+automata so interesting. The `sin` and `gaussian` activation functions also use
+transcendental math functions which won't be deterministic across machines.
+
+Still, they add a lot of visual interest and easy means by which to continously
+explore the rule space.
+
+----------------------------------------------------------------------------------------------------
+
+These examples show standard conways rules with different activation phase diagrams. The first two
+examples create a phase diagram of the `sin` and `smoothstep` activation functions. The second two
+examples are `sin` and `gaussian` activation functions with additional time step smoothing and a 
+different theme.
+
+```
+terminal-life --rule b3s23 --activation sin --theme cividis --phase \
+  --width 150 --height 150 --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y b3s23_sin.webp
+```
+
+```
+terminal-life --rule b3s23 --activation smoothstep --theme cividis --phase=-0.75:0.75,-0.75:0.75 \
+  --width 150 --height 150 --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y b3s23_smoothstep.webp
+```
+
+```
+terminal-life --rule b3s23 --activation sin --theme managua --phase --rate 3 \
+  --width 150 --height 150 --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y b3s23_sin_smoothed.webp
+```
+
+```
+terminal-life --rule b3s23 --activation gaussian --theme managua --phase --rate 3 \
+  --width 150 --height 150 --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y b3s23_gaussian_smoothed.webp
+```
+
+<img src="./tests/fixtures/readme/b3s23_sin.webp" width="200" height="200" />
+<img src="./tests/fixtures/readme/b3s23_smoothstep.webp" width="200" height="200" />
+<img src="./tests/fixtures/readme/b3s23_sin_smoothed.webp" width="200" height="200" />
+<img src="./tests/fixtures/readme/b3s23_gaussian_smoothed.webp" width="200" height="200" />
+
+----------------------------------------------------------------------------------------------------
+
+One interesting example I found was some wave like behaviour that shows up in in some regions. After
+enough ticks the "waves" synchronize across the grid. Generating these animations also showcases the
+use case of saving grid state. We can generate an initial image and animation, then tick it 1000's 
+of times to save another PNG. And then generate an image from this PNG to see what it looks like
+without needing to render the entire animation.
+
+```
+# Seed and settle the initial state, save as PNG
+terminal-life --rule b3s23 --reset-random .999 --activation sin --theme managua \
+  --alpha=-1.35 --beta 3.92 --rate 3 \
+  --width 150 --height 150 --ticks 150 \
+  --out waves_initial.png
+
+# Animate from the saved initial state
+terminal-life --load waves_initial.png --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y waves_initial.webp
+
+# Advance the state forward by 10,000 ticks without rendering
+terminal-life --load waves_initial.png --ticks 10000 \
+  --out waves_future.png
+
+# Animate the future state
+terminal-life --load waves_future.png --ticks 100 --stream \
+  | ffmpeg -f rawvideo -pixel_format rgba -video_size 150x150 \
+    -framerate 10 -i - -loop 0 -y waves_future.webp
+```
+
+<img src="./tests/fixtures/readme/waves_initial.webp" width="200" height="200" />
+<img src="./tests/fixtures/readme/waves_future.webp" width="200" height="200" />
+
+----------------------------------------------------------------------------------------------------
 
 ## The Algorithm
 The basic algorithm just uses life-like rules with state values treated as a probability between 
