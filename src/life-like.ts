@@ -138,7 +138,7 @@ class LifeLikeElement extends HTMLElement {
     /**
      * bindings for manipulating the grid. reset, random pixels
      */
-    vlk.bindKeys("<e>es>", "make-symmetric", "normal");
+    vlk.bindKeys("<e><s>", "make-symmetric", "normal");
     vlk.bindKeys("<r><r>", "reset-random", "normal");
     vlk.bindKeys("<r><s>", "reset-random", "normal", {
       densityRange: [.0001, .0001],
